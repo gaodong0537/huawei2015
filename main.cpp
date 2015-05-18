@@ -55,6 +55,7 @@ public:
   UINTS getPlayNum() {return m_iPlayerNum;}
   UINTS getCardNum() {return m_iCardNum; }
   vector<UINTS> getMaxCardType();
+  void initCardType();
   void changeFrontBet(int frontbet);
   GameHis getPlayerHis(string &str);
   void setBlindInfo(vector<string> blindInfo);
@@ -92,6 +93,7 @@ private:
   string m_sMyID;//wo de ID
   UINTS strConvertInt(char str);
 
+  vector<UINTS> m_vCardType;
 
  // vector<GameHis> gamehist;
 };
@@ -175,6 +177,10 @@ void Player::setCard(string card)
 {
   m_sCard[m_iCardNum] = card;
   ++m_iCardNum;
+  if(m_iCardNum == 2 || m_iCardNum >=5)
+    {
+      initCardType();
+    }
 }
 
 UINTS Player::strConvertInt(char str)
@@ -202,7 +208,7 @@ UINTS Player::strConvertInt(char str)
     }
   return i;
 }
-vector<UINTS> Player::getMaxCardType()
+void Player::initCardType()
 {
   vector<UINTS> typeCard[4] ;//0:SPADES 1:HEARTS 2:CLUBS 3:DIAMONDS
   vector<UINTS> digital ;
@@ -276,7 +282,14 @@ vector<UINTS> Player::getMaxCardType()
         }
     }
 
-  return returnresult;
+  m_vCardType = returnresult;
+
+}
+vector<UINTS> Player::getMaxCardType()
+{
+
+
+  return m_vCardType;
 
 }
 
