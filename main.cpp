@@ -791,12 +791,13 @@ string action(Player &play ,inquireInfo & inqInfo)
              }
             else
               {
+
                 if(action_Int.mypos <= 2 && inqInfo.noFlopNum == 3-action_Int.mypos && vCardType[2] >= 13 && vCardType[1]+vCardType[2]>=22)
                   return callJettonFunc_Intelligent(play,inqInfo,vCardType);
-                if(inqInfo.noFlopNum == action_Int.iPlayNum-1)
+                if(action_Int.iPlayNum/2 < inqInfo.foldNum  )
                   return checkActionFunc_Crazy(play,inqInfo,vCardType);
                 else
-                 return checkActionFunc_intelligent(play,inqInfo,vCardType);
+                  return checkActionFunc_intelligent(play,inqInfo,vCardType);
               }
 
           }
@@ -826,12 +827,12 @@ string action(Player &play ,inquireInfo & inqInfo)
                 }
                else
                  {
-                   if(inqInfo.raiseNum == 0 && action_Int.mypos <= 2 && inqInfo.noFlopNum == 3-action_Int.mypos && vCardType[2] >= 13 && vCardType[1]+vCardType[2]>=22)
-                     return callJettonFunc_Intelligent(play,inqInfo,vCardType);
-                   if(inqInfo.noFlopNum == action_Int.iPlayNum-1)
-                     return checkActionFunc_Crazy(play,inqInfo,vCardType);
-                   else
-                    return checkActionFunc_intelligent(play,inqInfo,vCardType);
+                      if(inqInfo.raiseNum == 0 && action_Int.mypos <= 2 && inqInfo.noFlopNum == 3-action_Int.mypos && vCardType[2] >= 13 && vCardType[1]+vCardType[2]>=22)
+                        return callJettonFunc_Intelligent(play,inqInfo,vCardType);
+                      if( action_Int.iPlayNum/2 < inqInfo.foldNum  && vCardType[2]+vCardType[1] >21 )
+                        return checkActionFunc_Crazy(play,inqInfo,vCardType);
+                      else
+                       return checkActionFunc_intelligent(play,inqInfo,vCardType);
                 }
 
         }
