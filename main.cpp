@@ -180,7 +180,19 @@ void Player::setCard(string card)
   if(m_iCardNum == 2 || m_iCardNum >=5)
     {
       initCardType();
+
     }
+  printf(card.c_str());
+  printf("\n");
+//  char pp[256] ={0};
+//  sprintf(pp,"/home/game/huawei/sshcpy/clientCardReplay/%s.txt",m_sMyID.c_str());
+//   FILE *f = fopen(pp ,"w+");
+
+//   fseek(f, 0 ,SEEK_END);
+//   fwrite(card.c_str(), 1,card.size()+1, f);
+//   fflush(f);
+//   fclose(f);
+
 }
 
 UINTS Player::strConvertInt(char str)
@@ -283,6 +295,10 @@ void Player::initCardType()
     }
 
   m_vCardType = returnresult;
+  for(int i=0; i<returnresult.size() ;i++)
+    printf(returnresult[i].c_str());
+  printf("\n");
+
 
 }
 vector<UINTS> Player::getMaxCardType()
@@ -356,7 +372,7 @@ UINTS seat(char *seatInfo, Player &play)
   return play.getPlayNum();
 }
 
-void showdown(char *downmsg)
+void showdown(char *downmsg, Player &play)
 {
 
 }
@@ -453,6 +469,7 @@ ActionClass::ActionClass(Player &play)
   for(int i=0 ; i<5 ;i++)
     {
       actionHead[i] = actionHead11[i];
+
     }
 }
 
@@ -728,6 +745,7 @@ string action(Player &play ,inquireInfo & inqInfo)
   ActionClass action_Int(play);
   UINTS iCardNum = play.getCardNum();
   vector<UINTS> vCardType = play.getMaxCardType();
+
 
   if(iCardNum == 2)
     {
@@ -1100,7 +1118,8 @@ int main(int argc, char *argv[])
       bool bOver = false;
       Player play(argv[5]);
  //     memset(&play , 0, sizeof(Player));
-      f = fopen("./clientreplay.txt" ,"w+");
+
+//      f = fopen("./clientreplay.txt" ,"w+");
       while(1)
         {
             memset(tempbuffer,'\0', MAXREAD);
@@ -1110,10 +1129,12 @@ int main(int argc, char *argv[])
               bOver = true;
               break;
              }
+            if(strlen(tempbuffer) <5)
+              read(sockfd, tempbuffer, MAXREAD);
 
-            fseek(f, 0 ,SEEK_END);
-            fwrite(tempbuffer, 1, strlen(tempbuffer)+1, f);
-            fflush(f);
+//            fseek(f, 0 ,SEEK_END);
+//            fwrite(tempbuffer, 1, strlen(tempbuffer)+1, f);
+//            fflush(f);
 
             switch(tempbuffer[0])
               {
@@ -1127,7 +1148,7 @@ int main(int argc, char *argv[])
                       }
                   }
                  else
-                  showdown(tempbuffer);
+                  showdown(tempbuffer,play);
                 break;
               case 'b':
                 blind(play, tempbuffer);
@@ -1171,7 +1192,7 @@ int main(int argc, char *argv[])
           printf("game over !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
           break;
         }
-      fclose(f);
+//      fclose(f);
     }
 
   close(sockfd);
