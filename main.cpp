@@ -296,7 +296,7 @@ void Player::initCardType()
 
   m_vCardType = returnresult;
   for(int i=0; i<returnresult.size() ;i++)
-    printf(returnresult[i].c_str());
+    printf("%d",returnresult[i]);
   printf("\n");
 
 
