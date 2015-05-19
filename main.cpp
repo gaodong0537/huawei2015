@@ -25,10 +25,11 @@ UINTS lunSum = 0;//use in action ,clear in addCard function
 #define CALLMAX_CRAZY 2
 #define CALLMAX_INTEL 1
 #define CHECKMAX_INTEL 1
+#define MAXREAD 1024
 
 sem_t thread_sem;
 sem_t main_sem;
-
+char tempbuffer[MAXREAD];
 
 
 typedef struct _threadSturct
@@ -36,14 +37,8 @@ typedef struct _threadSturct
   vector<UINTS> result;
 
 }threadStruct;
-//void *thread_function(void *arg)
-//{
-//  while(1)
-//    {
+void *thread_function(void *arg);
 
-//    }
-
-//}
 UINTS llll = 0;
 typedef struct _GameHis
 {
@@ -1085,7 +1080,7 @@ void blind(Player &play , char *info)
 {
   operation(BLIND, info, play);
 }
-#define MAXREAD 1024
+
 
 int main(int argc, char *argv[])
 {
@@ -1097,8 +1092,6 @@ int main(int argc, char *argv[])
   struct sockaddr_in address , addmy;
   memset(&address , 0 ,sizeof(address));
   memset(&addmy , 0 , sizeof(addmy));
-  int result;
-
   sockfd = socket(AF_INET , SOCK_STREAM ,0);
 
   addmy.sin_family = AF_INET;
@@ -1120,7 +1113,7 @@ int main(int argc, char *argv[])
   if(!sockConnect(sockfd, &address, len)) return -1;
 
   printf("success connect IP:%s\n", argv[3]);
-  char tempbuffer[MAXREAD];
+
   char regbuffer[MAXREAD];
   char readbuffer[MAXREAD];
   memset(tempbuffer,'\0', MAXREAD);
@@ -1133,7 +1126,7 @@ int main(int argc, char *argv[])
   strcat(tempbuffer,argv[5]);
   strcat(tempbuffer," ");
 
-  memcpy(regbuffer,tempbuffer,strlen(tempbuffer)+1);
+//  memcpy(regbuffer,tempbuffer,strlen(tempbuffer)+1);
 
   if(-1 == write(sockfd , tempbuffer , strlen(tempbuffer)+1))
   {
@@ -1143,83 +1136,65 @@ int main(int argc, char *argv[])
 
   FILE *f = NULL;
 
-//  int res;
-//  res = sem_init(&thread_sem,0,0);
-//  if(res != 0)
-//    printf("semp error\n");
-//  res = sem_init(&main_sem,0,0);
-//  if(res !=0)
-//    printf("semp error\n");
-//  pthread_t a_thread;
-//  res = pthread_create(&a_thread, NULL, thread_function, NULL );
-//  if(res != 0)
-//    printf("thread create error\n");
+  int res;
+  res = sem_init(&thread_sem,0,0);
+  if(res != 0)
+    printf("semp error\n");
+  res = sem_init(&main_sem,0,0);
+  if(res !=0)
+    printf("semp error\n");
+  pthread_t a_thread;
+  res = pthread_create(&a_thread, NULL, thread_function, (void *)&sockfd);
+  if(res != 0)
+    printf("thread create error\n");
   while(1)
     {
       bool bOver = false;
-       string s ;
+      string s ;
       Player play(argv[5]);
- //     memset(&play , 0, sizeof(Player));
 
 //      f = fopen("./clientreplay.txt" ,"w+");
 
 
       while(1)
         {
-            memset(tempbuffer,'\0', MAXREAD);
 
-            for(int i=0 ; i<3 ;i++)
-              {
-               result = read(sockfd, tempbuffer, MAXREAD);
-
-               if (result > 0) break;
-               if(i != 2) continue;
-               else
-                  {
-                    printf("read fail\n");
-                    bOver = true;
-                    break;
-                  }
-              }
-
-            if(result == 0) break;
-
-            if(strlen(tempbuffer) == 0)
-              printf("read error! \n");
-            fflush(stdout);
 
 //            fseek(f, 0 ,SEEK_END);
 //            fwrite(tempbuffer, 1, strlen(tempbuffer)+1, f);
 //            fflush(f);
 
-            switch(tempbuffer[0])
+            sem_wait(&thread_sem);
+            memcpy(readbuffer,tempbuffer,MAXREAD);
+            sem_post(&main_sem);
+            switch(readbuffer[0])
               {
               case 's'://two select ,,,warning 1:seat 2:showdown
-                if(tempbuffer[1] == 'e')
+                if(readbuffer[1] == 'e')
                   {
-                    if(seat(tempbuffer,play) == 0)
+                    if(seat(readbuffer,play) == 0)
                       {
                         bOver = true;
                         break;
                       }
                   }
                  else
-                  showdown(tempbuffer,play);
+                  showdown(readbuffer,play);
                 break;
               case 'b':
-                blind(play, tempbuffer);
+                blind(play, readbuffer);
                 break;
               case 'h':
               case 'f':
               case 't':
               case 'r':
-                addCard(tempbuffer, play);
+                addCard(readbuffer, play);
                 break;
               case 'i':
                 {
-                  printf("%d success inquire ! strlen = %d\n",llll,strlen(tempbuffer));
+                  printf("%d success inquire ! strlen = %d\n",llll,strlen(readbuffer));
                   fflush(stdout);
-                  s = inquire(tempbuffer, play);
+                  s = inquire(readbuffer, play);
                   if(s.size() == 0)
                     printf("action error in inqire!!\n");
                   else
@@ -1260,4 +1235,43 @@ int main(int argc, char *argv[])
 
   close(sockfd);
   return 0;
+}
+
+void *thread_function(void *arg)
+{
+  bool bOver = false;
+  int result;
+  int sockfd = *((int*)arg);
+  while(1)
+    {
+      memset(tempbuffer,'\0', MAXREAD);
+
+      for(int i=0 ; i<3 ;i++)
+        {
+         result = read(sockfd, tempbuffer, MAXREAD);
+
+         if (result > 0) break;
+         if(i != 2) continue;
+         else
+            {
+              printf("read fail\n");
+              bOver = true;
+              break;
+            }
+        }
+
+      if(result == 0) break;
+      if(bOver = true) break;
+      if(strlen(tempbuffer) == 0)
+        {
+          printf("read error! \n");
+          fflush(stdout);
+        }
+      sem_post(&thread_sem);
+      sem_wait(&main_sem);
+
+    }
+  char pexit[] = "thread exit!\n";
+  pthread_exit(pexit);
+
 }
