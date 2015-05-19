@@ -31,7 +31,7 @@ int lunSum = 0;//use in action ,clear in addCard function
 sem_t thread_sem;
 sem_t main_sem;
 char tempbuffer[MAXREAD];
-
+bool bOver = false;
 
 typedef struct _threadSturct
 {
@@ -522,7 +522,13 @@ string raiseJettonFunc_Crazy(Player &play, inquireInfo &inqInfo,vector<int> &vCa
               lunSum++;
             }
           else
-             actionResult = actionResult +action_Int.actionHead[0];
+            {
+              if(action_Int.myRemJetton >= inqInfo.noFlodLeastJetton)
+              sprintf(cLeatBet,"%d ",inqInfo.noFlodLeastJetton);
+              strLeatBet = cLeatBet;
+              actionResult = actionResult+action_Int.actionHead[2] + strLeatBet;
+              lunSum++;
+            }
         }
       else
         {
@@ -541,7 +547,12 @@ string raiseJettonFunc_Crazy(Player &play, inquireInfo &inqInfo,vector<int> &vCa
                 lunSum++;
               }
             else
-               actionResult = actionResult +action_Int.actionHead[0];
+              {
+                sprintf(cLeatBet,"%d ",action_Int.leastBet);
+                strLeatBet = cLeatBet;
+                actionResult = actionResult+action_Int.actionHead[2] + strLeatBet;
+                lunSum++;
+              }
 
           }
         else if(action_Int.myRemJetton >  action_Int.leastBet)
@@ -1171,7 +1182,6 @@ int main(int argc, char *argv[])
     printf("thread create error\n");
   while(1)
     {
-      bool bOver = false;
       string s ;
       Player play(argv[5]);
 
@@ -1258,7 +1268,8 @@ int main(int argc, char *argv[])
 //      fclose(f);
 
     }
-
+  void *threadresult;
+  pthread_join(a_thread,&threadresult);
   close(sockfd);
   return 0;
 }
@@ -1285,15 +1296,9 @@ void *thread_function(void *arg)
               break;
             }
         }
-
-      if(result == 0) break;
-      if(bOver == true) break;
-      if(strlen(tempbuffer) == 0)
-        {
-          printf("read error! \n");
-          fflush(stdout);
-        }
       sem_post(&thread_sem);
+      if(bOver == true) break;
+
       sem_wait(&main_sem);
 
     }
@@ -1325,8 +1330,7 @@ void pot_win(Player &play ,char *argv)
   vector<int> cardtype = play.getMaxCardType();
   for(int i=0;i<cardtype.size();i++)
     {
-      s = cardtype[i];
-      sprintf(writeIn,"%d  ",s.c_str());
+      sprintf(writeIn,"%d  ",cardtype[i]);
       fwrite(writeIn, 1, strlen(writeIn)+1, f);
       fflush(f);
     }
