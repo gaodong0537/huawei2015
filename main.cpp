@@ -1261,7 +1261,7 @@ void *thread_function(void *arg)
         }
 
       if(result == 0) break;
-      if(bOver = true) break;
+      if(bOver == true) break;
       if(strlen(tempbuffer) == 0)
         {
           printf("read error! \n");
