@@ -10,8 +10,11 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <pthread.h>
 #include <algorithm>
+#include <semaphore.h>
 using namespace std;
+
 
 
 typedef unsigned short int UINTS;
@@ -23,7 +26,25 @@ UINTS lunSum = 0;//use in action ,clear in addCard function
 #define CALLMAX_INTEL 1
 #define CHECKMAX_INTEL 1
 
+sem_t thread_sem;
+sem_t main_sem;
 
+
+
+typedef struct _threadSturct
+{
+  vector<UINTS> result;
+
+}threadStruct;
+//void *thread_function(void *arg)
+//{
+//  while(1)
+//    {
+
+//    }
+
+//}
+UINTS llll = 0;
 typedef struct _GameHis
 {
   string ID;
@@ -182,8 +203,9 @@ void Player::setCard(string card)
       initCardType();
 
     }
-  printf(card.c_str());
-  printf("\n");
+  printf("%d hand ::%s \n",llll,card.c_str());
+  fflush(stdout);
+//  printf("\n");
 //  char pp[256] ={0};
 //  sprintf(pp,"/home/game/huawei/sshcpy/clientCardReplay/%s.txt",m_sMyID.c_str());
 //   FILE *f = fopen(pp ,"w+");
@@ -295,9 +317,11 @@ void Player::initCardType()
     }
 
   m_vCardType = returnresult;
+  printf(" %d hand:::::::" ,llll);
   for(int i=0; i<returnresult.size() ;i++)
     printf("%d",returnresult[i]);
   printf("\n");
+  fflush(stdout);
 
 
 }
@@ -339,6 +363,7 @@ char* removeHead(char *seatInfo, string &rmData)
 
 UINTS seat(char *seatInfo, Player &play)
 {
+  llll ++;
   play.init();
 
   string sHead[3]={"button: ", "small blind: ","big blind: "};
@@ -766,10 +791,9 @@ string action(Player &play ,inquireInfo & inqInfo)
           else
             {
               if(inqInfo.raiseNum ==0 && inqInfo.noFlopNum < action_Int.iPlayNum/2)
-                return raiseJettonFunc_Intelligent(play,inqInfo,vCardType);
-              if(inqInfo.raiseNum == 0 )
                 return callJettonFunc_Crazy(play,inqInfo,vCardType);
-              return checkActionFunc_Crazy(play,inqInfo,vCardType);
+              else
+                return checkActionFunc_Crazy(play,inqInfo,vCardType);
 
             }
 
@@ -810,9 +834,9 @@ string action(Player &play ,inquireInfo & inqInfo)
             else
               {
 
-                if(action_Int.mypos <= 2 && inqInfo.noFlopNum == 3-action_Int.mypos && vCardType[2] >= 13 && vCardType[1]+vCardType[2]>=22)
+                if(action_Int.mypos <= 2 && inqInfo.noFlopNum == 3-action_Int.mypos && vCardType[2] >= 11 && vCardType[1]+vCardType[2]>=22)
                   return callJettonFunc_Intelligent(play,inqInfo,vCardType);
-                if(action_Int.iPlayNum/2 < inqInfo.foldNum  )
+                if(action_Int.iPlayNum/2 < inqInfo.foldNum || vCardType[2] == 14 )
                   return checkActionFunc_Crazy(play,inqInfo,vCardType);
                 else
                   return checkActionFunc_intelligent(play,inqInfo,vCardType);
@@ -821,7 +845,7 @@ string action(Player &play ,inquireInfo & inqInfo)
           }
       else
         {
-          if(vCardType[2]+vCardType[1] >= 26  )
+               if(vCardType[2]+vCardType[1] >= 26  )
                 {
                    if(inqInfo.raiseNum ==0 )
                      return raiseJettonFunc_Intelligent(play,inqInfo,vCardType);
@@ -839,7 +863,7 @@ string action(Player &play ,inquireInfo & inqInfo)
                else if((vCardType[2]+vCardType[1] >= 25 && vCardType[1] == 11) )//A J
                 {
                    if(inqInfo.raiseNum == 0 && inqInfo.noFlopNum == 3-action_Int.mypos )
-                   return  callJettonFunc_Intelligent(play,inqInfo,vCardType);
+                    return  callJettonFunc_Intelligent(play,inqInfo,vCardType);
                    else
                     return checkActionFunc_Crazy(play,inqInfo,vCardType);
                 }
@@ -847,7 +871,7 @@ string action(Player &play ,inquireInfo & inqInfo)
                  {
                       if(inqInfo.raiseNum == 0 && action_Int.mypos <= 2 && inqInfo.noFlopNum == 3-action_Int.mypos && vCardType[2] >= 13 && vCardType[1]+vCardType[2]>=22)
                         return callJettonFunc_Intelligent(play,inqInfo,vCardType);
-                      if( action_Int.iPlayNum/2 < inqInfo.foldNum  && vCardType[2]+vCardType[1] >21 )
+                      if( inqInfo.raiseNum == 0 &&action_Int.iPlayNum/2 < inqInfo.foldNum  && vCardType[2]+vCardType[1] >21 )
                         return checkActionFunc_Crazy(play,inqInfo,vCardType);
                       else
                        return checkActionFunc_intelligent(play,inqInfo,vCardType);
@@ -889,9 +913,15 @@ string action(Player &play ,inquireInfo & inqInfo)
       //two pair and first two card is pair
       if((firstCheck+secondCheck == 4) && play.firstTwoCardIsPair())
         return callJettonFunc_Crazy(play, inqInfo, vCardType);
+      //si tong hua
+      if(vCardType[iCardNum+0] == 4 || vCardType[iCardNum+1] == 4 ||vCardType[iCardNum+2] == 4 || vCardType[iCardNum+3] == 4)
+      return callJettonFunc_Intelligent(play, inqInfo, vCardType);
       //one pair and first two is not pair
       if((firstCheck+secondCheck == 2) && !play.firstTwoCardIsPair())
         return callJettonFunc_Intelligent(play, inqInfo, vCardType);
+      //si sun zi
+      if((vCardType[iCardNum-2] - vCardType[0] == 3) || (vCardType[iCardNum-1] - vCardType[1] == 3))
+         return checkActionFunc_Crazy(play, inqInfo, vCardType);
       if((firstCheck+secondCheck == 2) && play.firstTwoCardIsPair())
         return checkActionFunc_Crazy(play, inqInfo, vCardType);
       else
@@ -1067,7 +1097,7 @@ int main(int argc, char *argv[])
   struct sockaddr_in address , addmy;
   memset(&address , 0 ,sizeof(address));
   memset(&addmy , 0 , sizeof(addmy));
-  UINTS result;
+  int result;
 
   sockfd = socket(AF_INET , SOCK_STREAM ,0);
 
@@ -1113,24 +1143,50 @@ int main(int argc, char *argv[])
 
   FILE *f = NULL;
 
+//  int res;
+//  res = sem_init(&thread_sem,0,0);
+//  if(res != 0)
+//    printf("semp error\n");
+//  res = sem_init(&main_sem,0,0);
+//  if(res !=0)
+//    printf("semp error\n");
+//  pthread_t a_thread;
+//  res = pthread_create(&a_thread, NULL, thread_function, NULL );
+//  if(res != 0)
+//    printf("thread create error\n");
   while(1)
     {
       bool bOver = false;
+       string s ;
       Player play(argv[5]);
  //     memset(&play , 0, sizeof(Player));
 
 //      f = fopen("./clientreplay.txt" ,"w+");
+
+
       while(1)
         {
             memset(tempbuffer,'\0', MAXREAD);
-            if(0 >= (result = read(sockfd, tempbuffer, MAXREAD)))
-             {
-              printf("read fail\n");
-              bOver = true;
-              break;
-             }
-            if(strlen(tempbuffer) <5)
-              read(sockfd, tempbuffer, MAXREAD);
+
+            for(int i=0 ; i<3 ;i++)
+              {
+               result = read(sockfd, tempbuffer, MAXREAD);
+
+               if (result > 0) break;
+               if(i != 2) continue;
+               else
+                  {
+                    printf("read fail\n");
+                    bOver = true;
+                    break;
+                  }
+              }
+
+            if(result == 0) break;
+
+            if(strlen(tempbuffer) == 0)
+              printf("read error! \n");
+            fflush(stdout);
 
 //            fseek(f, 0 ,SEEK_END);
 //            fwrite(tempbuffer, 1, strlen(tempbuffer)+1, f);
@@ -1161,7 +1217,13 @@ int main(int argc, char *argv[])
                 break;
               case 'i':
                 {
-                  string s = inquire(tempbuffer, play);
+                  printf("%d success inquire ! strlen = %d\n",llll,strlen(tempbuffer));
+                  fflush(stdout);
+                  s = inquire(tempbuffer, play);
+                  if(s.size() == 0)
+                    printf("action error in inqire!!\n");
+                  else
+                    printf("action=%s\n",s.c_str());
                   for(UINTS i=0 ; i<3 ; i++)
                     {
                      if(0 < write(sockfd , s.c_str() , s.size()+1))
@@ -1183,7 +1245,7 @@ int main(int argc, char *argv[])
                 break;
 
               }
-            printf("\n::::::\n%s\n:::::\n\n", tempbuffer);
+
             if(bOver) break;
 
       }
@@ -1193,6 +1255,7 @@ int main(int argc, char *argv[])
           break;
         }
 //      fclose(f);
+
     }
 
   close(sockfd);
