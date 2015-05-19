@@ -89,6 +89,7 @@ public:
 //  void clearHist(){ gamehist.clear();}//zhi ji lu yi lun history
 public:
   bool m_bChangeFrontHaveBet;
+  UINTS strConvertInt(char str);
 private:
   string m_sCard[7];//0,1 our card , 2 3 4 5 6 public card
   string m_sSeatInfo[8];//0:button, 1:small blind 2:big blind 3 4 5 6 7 other player
@@ -107,7 +108,7 @@ private:
                         //zhe m_iFrontHaveBet-m_iHaveBet wei wo ying gai jia de zu
   UINTS m_iSeatPos;//wo de wei zhi
   string m_sMyID;//wo de ID
-  UINTS strConvertInt(char str);
+
 
   vector<UINTS> m_vCardType;
 
@@ -239,7 +240,7 @@ UINTS Player::strConvertInt(char str)
 }
 void Player::initCardType()
 {
-  vector<UINTS> typeCard[4] ;//0:SPADES 1:HEARTS 2:CLUBS 3:DIAMONDS
+  UINTS typeCard[4]={0} ;//0:SPADES 1:HEARTS 2:CLUBS 3:DIAMONDS
   vector<UINTS> digital ;
   UINTS digiNum[13]={0};
   UINTS shuzi;
@@ -251,27 +252,26 @@ void Player::initCardType()
       switch(m_sCard[i][0])
         {
         case 'S':
-          typeCard[0].push_back(shuzi);
+          typeCard[0]++;
           break;
         case 'H':
-          typeCard[1].push_back(shuzi);
+          typeCard[1]++;
           break;
         case 'C':
-          typeCard[2].push_back(shuzi);
+          typeCard[2]++;
           break;
         case 'D':
-          typeCard[3].push_back(shuzi);
+          typeCard[3]++;
           break;
         default:
           perror("card error!\n");
         }
       digital.push_back(shuzi);
     }
-  for(UINTS i=0 ; i<4 ; i++)
-    sort(typeCard[i].begin(), typeCard[i].end());
   sort(digital.begin(), digital.end());
 
   vector<UINTS> returnresult;//dui zi return 1, tong hua return 2, qi ta return 3
+  m_vCardType.clear();
   if( 2 == m_iCardNum)
     {
       returnresult.clear();
@@ -280,7 +280,7 @@ void Player::initCardType()
           returnresult.push_back(digital[0]);
           returnresult.push_back(digital[1]);
         }
-      else if(typeCard[0].size() ==2 || typeCard[1].size() ==2 || typeCard[2].size() ==2 || typeCard[3].size() ==2)
+      else if(typeCard[0]==2 || typeCard[1] ==2 || typeCard[2] ==2 || typeCard[3] ==2)
       {
           returnresult.push_back(2);
           returnresult.push_back(digital[0]);
@@ -303,7 +303,7 @@ void Player::initCardType()
         }
       for(UINTS i=0 ; i<4 ; i++)
         {
-          returnresult.push_back(typeCard[i].size());
+          returnresult.push_back(typeCard[i]);
         }
       for(UINTS i=0 ; i<13 ; i++)
         {
@@ -327,7 +327,7 @@ vector<UINTS> Player::getMaxCardType()
   return m_vCardType;
 
 }
-
+void pot_win(Player &play,char *argv);
 enum OperateType
 {
   ADDCARD,BLIND,INQUERE
@@ -758,10 +758,30 @@ string checkActionFunc_intelligent(Player play, inquireInfo &inqInfo,vector<UINT
   return actionResult;
 }
 
+string fastHandle(Player &play)
+{
+
+  string strCard1 = play.getCard(0);
+  string strCard2 = play.getCard(1);
+  UINTS iCard1 = play.strConvertInt(strCard1[1]);
+  UINTS iCard12 = play.strConvertInt(strCard2[1]);
+
+  if(iCard1+iCard12 >= 26)
+    return " call ";
+  if(strCard1[0] == strCard2[0] && iCard1+iCard12 >=25)
+    return " call ";
+  if(strCard1[1] == strCard2[1] && iCard1 >= 12)
+    return " call ";
+
+  return " fold ";
+
+}
+
 
 string action(Player &play ,inquireInfo & inqInfo)
 {
-
+  if(inqInfo.raiseNum ==0 && inqInfo.checkNum == 0 && inqInfo.callNum ==0 && inqInfo.foldNum == 0 && inqInfo.blindNum !=0)
+    return fastHandle(play);
   ActionClass action_Int(play);
   UINTS iCardNum = play.getCardNum();
   vector<UINTS> vCardType = play.getMaxCardType();
@@ -1134,7 +1154,6 @@ int main(int argc, char *argv[])
    return -1;
   }
 
-  FILE *f = NULL;
 
   int res;
   res = sem_init(&thread_sem,0,0);
@@ -1158,12 +1177,6 @@ int main(int argc, char *argv[])
 
       while(1)
         {
-
-
-//            fseek(f, 0 ,SEEK_END);
-//            fwrite(tempbuffer, 1, strlen(tempbuffer)+1, f);
-//            fflush(f);
-
             sem_wait(&thread_sem);
             memcpy(readbuffer,tempbuffer,MAXREAD);
             sem_post(&main_sem);
@@ -1192,8 +1205,15 @@ int main(int argc, char *argv[])
                 break;
               case 'i':
                 {
+
+
                   printf("%d success inquire ! strlen = %d\n",llll,strlen(readbuffer));
                   fflush(stdout);
+//                  if(play.getCard(0) == "")
+//                    s = " fold ";
+//                  else
+//                    s = inquire(readbuffer, play);
+
                   s = inquire(readbuffer, play);
                   if(s.size() == 0)
                     printf("action error in inqire!!\n");
@@ -1212,6 +1232,7 @@ int main(int argc, char *argv[])
                 }
 
               case 'p':
+                pot_win(play,argv[5]);
                 break;
               case 'g':
                 bOver = true;
@@ -1273,5 +1294,42 @@ void *thread_function(void *arg)
     }
   char pexit[] = "thread exit!\n";
   pthread_exit(pexit);
+
+}
+
+void pot_win(Player &play ,char *argv)
+{
+  FILE *f = NULL;
+  static int jishu = 0;
+  char path[1024] = {0};
+  sprintf(path,"%s%s.txt","/home/game/huawei/sshcpy/",argv);
+  f = fopen(path ,"a+");
+  int iCardNum = play.getCardNum();
+  string s="";
+  char writeIn[32]={0};
+  for(int i=0; i<iCardNum; i++)
+    {
+      s = play.getCard(i);
+      sprintf(writeIn,"%s ",s.c_str());
+      fwrite(writeIn, 1, strlen(writeIn)+1, f);
+      fflush(f);
+    }
+  sprintf(writeIn,"%s----%d\n","----Card",jishu);
+  fwrite(writeIn, 1, strlen(writeIn), f);
+  fflush(f);
+  vector<UINTS> cardtype = play.getMaxCardType();
+  for(int i=0;i<cardtype.size();i++)
+    {
+      s = cardtype[i];
+      sprintf(writeIn,"%d ",s.c_str());
+      fwrite(writeIn, 1, strlen(writeIn)+1, f);
+      fflush(f);
+    }
+
+  sprintf(writeIn,"%s--%d\n","-----CardType",jishu);
+  fwrite(writeIn, 1, strlen(writeIn)+1, f);
+  fflush(f);
+  fclose(f);
+  jishu++;
 
 }
