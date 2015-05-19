@@ -13,12 +13,13 @@
 #include <pthread.h>
 #include <algorithm>
 #include <semaphore.h>
+#include <cctype>
 using namespace std;
 
 
 
-typedef unsigned short int UINTS;
-UINTS lunSum = 0;//use in action ,clear in addCard function
+//typedef unsigned short int UINTS;
+int lunSum = 0;//use in action ,clear in addCard function
 #define LUNMAX 5
 #define RAISEMAX_CRAZZY 4
 #define RAISEMAX_INTEL 3
@@ -34,23 +35,23 @@ char tempbuffer[MAXREAD];
 
 typedef struct _threadSturct
 {
-  vector<UINTS> result;
+  vector<int> result;
 
 }threadStruct;
 void *thread_function(void *arg);
 
-UINTS llll = 0;
+int llll = 0;
 typedef struct _GameHis
 {
   string ID;
-  UINTS jetton;
-  UINTS money;
-  UINTS bet;
+  int jetton;
+  int money;
+  int bet;
   string status;
 
-  UINTS frontbet;
-  UINTS foldnum;
-  UINTS winnum;
+  int frontbet;
+  int foldnum;
+  int winnum;
 
 
 }GameHis;
@@ -63,62 +64,63 @@ public:
   Player(string str);
   void init();
   void setSeat(const string &playID, const string &jetton, const string &money);
-  UINTS  getSeatPos(){return m_iSeatPos;}
-  vector<string> getSeatInfo() { vector<string> seat ; for(UINTS i=0 ; i<m_iPlayerNum ;i++) seat.push_back(m_sSeatInfo[i]); return seat; }
+  int  getSeatPos(){return m_iSeatPos;}
+  vector<string> getSeatInfo() { vector<string> seat ; for(int i=0 ; i<m_iPlayerNum ;i++) seat.push_back(m_sSeatInfo[i]); return seat; }
   void setCard( string card);
-  string getCard(UINTS index) { if(index < m_iCardNum) return m_sCard[index]; else return "";}
+  string getCard(int index) { if(index < m_iCardNum) return m_sCard[index]; else return "";}
   string getAction();
-  UINTS getPlayNum() {return m_iPlayerNum;}
-  UINTS getCardNum() {return m_iCardNum; }
-  vector<UINTS> getMaxCardType();
+  int getPlayNum() {return m_iPlayerNum;}
+  int getCardNum() {return m_iCardNum; }
+  vector<int> getMaxCardType();
   void initCardType();
   void changeFrontBet(int frontbet);
   GameHis getPlayerHis(string &str);
   void setBlindInfo(vector<string> blindInfo);
 
-  UINTS getMyRemJetton(){return m_iRemainedJetton;}
-  void deleaseMyJetton(UINTS lease){ m_iRemainedJetton = m_iMyJetton - lease;}
-  void setMyJetton(UINTS jetton){ m_iMyJetton = jetton;}
+  int getMyRemJetton(){return m_iRemainedJetton;}
+  void deleaseMyJetton(int lease){ m_iRemainedJetton = m_iMyJetton - lease;}
+  void setMyJetton(int jetton){ m_iMyJetton = jetton;}
 
-  void setHaveBet(UINTS bet) { m_iHaveBet = bet; m_iRemainedJetton = m_iMyJetton - bet;}
-  UINTS getHaveBet(){ return m_iHaveBet;}
-  UINTS getLeastBet() {int ifrontBet = m_iFrontHaveBet-m_iHaveBet; return (ifrontBet > 0 ? ifrontBet : 0 );}
+  void setHaveBet(int bet) { m_iHaveBet = bet; m_iRemainedJetton = m_iMyJetton - bet;}
+  int getHaveBet(){ return m_iHaveBet;}
+  int getLeastBet() {int ifrontBet = m_iFrontHaveBet-m_iHaveBet; return (ifrontBet > 0 ? ifrontBet : 0 );}
 
   bool firstTwoCardIsPair( ){ return m_sCard[1][1] == m_sCard[0][1] ;}
-  UINTS getRaiseLeast(){ return m_iRaiseLeastBet;}
+  int getRaiseLeast(){ return m_iRaiseLeastBet;}
 //  void clearHist(){ gamehist.clear();}//zhi ji lu yi lun history
 public:
   bool m_bChangeFrontHaveBet;
-  UINTS strConvertInt(char str);
+  int strConvertInt(char str);
 private:
-  string m_sCard[7];//0,1 our card , 2 3 4 5 6 public card
+  //string m_sCard[7];//0,1 our card , 2 3 4 5 6 public card
+  vector<string> m_sCard;
   string m_sSeatInfo[8];//0:button, 1:small blind 2:big blind 3 4 5 6 7 other player
-  UINTS m_iMoney[8];
-  UINTS m_iJetton[8];
-  UINTS m_iCardNum;
-  UINTS m_iPlayerNum;
+  int m_iMoney[8];
+  int m_iJetton[8];
+  int m_iCardNum;
+  int m_iPlayerNum;
 
-  UINTS m_iLeastBet;
+  int m_iLeastBet;
 
-  UINTS m_iRaiseLeastBet;
-  UINTS m_iRemainedJetton;
-  UINTS m_iMyJetton;//kai si wo de chou ma
-  UINTS m_iHaveBet;//wo yi jing jia de zu
-  UINTS m_iFrontHaveBet;//pai zuo shang zai wo zhi qian jia de zui duo de zu,ru guo wo gen zu de hua
+  int m_iRaiseLeastBet;
+  int m_iRemainedJetton;
+  int m_iMyJetton;//kai si wo de chou ma
+  int m_iHaveBet;//wo yi jing jia de zu
+  int m_iFrontHaveBet;//pai zuo shang zai wo zhi qian jia de zui duo de zu,ru guo wo gen zu de hua
                         //zhe m_iFrontHaveBet-m_iHaveBet wei wo ying gai jia de zu
-  UINTS m_iSeatPos;//wo de wei zhi
+  int m_iSeatPos;//wo de wei zhi
   string m_sMyID;//wo de ID
 
 
-  vector<UINTS> m_vCardType;
+  vector<int> m_vCardType;
 
  // vector<GameHis> gamehist;
 };
 
 Player::Player(string str)
 {
-  for(UINTS i=0 ; i<7 ; i++) m_sCard[i]="";
-  for(UINTS i=0 ; i<8 ; i++)
+  m_sCard.clear();
+  for(int i=0 ; i<8 ; i++)
     {
       m_sSeatInfo[i]="";
       m_iMoney[i] = 0;
@@ -139,8 +141,8 @@ Player::Player(string str)
 
 void Player::init()
 {
-  for(UINTS i=0 ; i<7 ; i++) m_sCard[i]="";
-  for(UINTS i=0 ; i<8 ; i++)
+  m_sCard.clear();
+  for(int i=0 ; i<8 ; i++)
     {
       m_sSeatInfo[i]="";
       m_iMoney[i] = 0;
@@ -192,7 +194,8 @@ void Player::setSeat(const string &playID, const string &jetton, const string &m
 }
 void Player::setCard(string card)
 {
-  m_sCard[m_iCardNum] = card;
+//  m_sCard[m_iCardNum] = card;
+  m_sCard.push_back(card);
   ++m_iCardNum;
   if(m_iCardNum == 2 || m_iCardNum >=5)
     {
@@ -213,9 +216,9 @@ void Player::setCard(string card)
 
 }
 
-UINTS Player::strConvertInt(char str)
+int Player::strConvertInt(char str)
 {
-  UINTS i=0;
+  int i=0;
   switch(str)
     {
     case '1':
@@ -240,12 +243,12 @@ UINTS Player::strConvertInt(char str)
 }
 void Player::initCardType()
 {
-  UINTS typeCard[4]={0} ;//0:SPADES 1:HEARTS 2:CLUBS 3:DIAMONDS
-  vector<UINTS> digital ;
-  UINTS digiNum[13]={0};
-  UINTS shuzi;
+  int typeCard[4]={0} ;//0:SPADES 1:HEARTS 2:CLUBS 3:DIAMONDS
+  vector<int> digital ;
+  int digiNum[13]={0};
+  int shuzi;
 
-  for(UINTS i=0 ; i<m_iCardNum ; i++)
+  for(int i=0 ; i<m_iCardNum ; i++)
     {
       shuzi = strConvertInt(m_sCard[i][1]);
       digiNum[shuzi-2]++;
@@ -270,7 +273,7 @@ void Player::initCardType()
     }
   sort(digital.begin(), digital.end());
 
-  vector<UINTS> returnresult;//dui zi return 1, tong hua return 2, qi ta return 3
+  vector<int> returnresult;//dui zi return 1, tong hua return 2, qi ta return 3
   m_vCardType.clear();
   if( 2 == m_iCardNum)
     {
@@ -297,15 +300,15 @@ void Player::initCardType()
   else//5 6 7 first push the sort card and push the card's number of eatch of colour
     {
       returnresult.clear();
-      for(UINTS i=0 ; i<m_iCardNum; i++)
+      for(int i=0 ; i<m_iCardNum; i++)
         {
           returnresult.push_back(digital[i]);
         }
-      for(UINTS i=0 ; i<4 ; i++)
+      for(int i=0 ; i<4 ; i++)
         {
           returnresult.push_back(typeCard[i]);
         }
-      for(UINTS i=0 ; i<13 ; i++)
+      for(int i=0 ; i<13 ; i++)
         {
           returnresult.push_back(digiNum[i]);
         }
@@ -320,7 +323,7 @@ void Player::initCardType()
 
 
 }
-vector<UINTS> Player::getMaxCardType()
+vector<int> Player::getMaxCardType()
 {
 
 
@@ -356,7 +359,7 @@ char* removeHead(char *seatInfo, string &rmData)
 
 
 
-UINTS seat(char *seatInfo, Player &play)
+int seat(char *seatInfo, Player &play)
 {
   llll ++;
   play.init();
@@ -431,22 +434,22 @@ void operation(OperateType oType, char *info, Player &play)
     }
 
 }
-UINTS addCard(char *info ,Player &play)
+int addCard(char *info ,Player &play)
 {
   operation(ADDCARD, info, play);
   if(play.getCardNum() > 2) lunSum =0;
   return 0;
 }
 
-bool sockConnect(int &sockfd, struct sockaddr_in *sockaddr , UINTS &len)
+bool sockConnect(int &sockfd, struct sockaddr_in *sockaddr , int &len)
 {
-//  UINTS result = 0;
-//  for(UINTS i=0 ; i<3 ; i++)
+//  int result = 0;
+//  for(int i=0 ; i<3 ; i++)
 //    {
 //      result = connect(sockfd, (struct sockaddr *)sockaddr, len);
 //      if( 0 != result)
 //        {
-//          prUINTSf("connect error \n");
+//          printf("connect error \n");
 //          if(i==3)
 //            return false;
 //          sleep(1);
@@ -459,7 +462,7 @@ bool sockConnect(int &sockfd, struct sockaddr_in *sockaddr , UINTS &len)
 
 
 typedef struct _inquireInfo{
-  UINTS noFlopNum,checkNum,callNum ,raiseNum, allinNum, blindNum, foldNum, noFlodLeastJetton;
+  int noFlopNum,checkNum,callNum ,raiseNum, allinNum, blindNum, foldNum, noFlodLeastJetton;
 }inquireInfo;
 
 
@@ -471,11 +474,11 @@ public:
   ActionClass(Player &play);
 private:
 public:
-  UINTS iPlayNum ;
-  UINTS mypos ;
-  UINTS leastBet ;
-  UINTS myRemJetton ;
-  UINTS raiseLeastBet ;
+  int iPlayNum ;
+  int mypos ;
+  int leastBet ;
+  int myRemJetton ;
+  int raiseLeastBet ;
   string actionHead[5];
 };
 ActionClass::ActionClass(Player &play)
@@ -493,7 +496,7 @@ ActionClass::ActionClass(Player &play)
     }
 }
 
-string raiseJettonFunc_Crazy(Player &play, inquireInfo &inqInfo,vector<UINTS> &vCardType)
+string raiseJettonFunc_Crazy(Player &play, inquireInfo &inqInfo,vector<int> &vCardType)
 {
   string actionResult="";
 
@@ -554,7 +557,7 @@ string raiseJettonFunc_Crazy(Player &play, inquireInfo &inqInfo,vector<UINTS> &v
   return actionResult;
 }
 
-string raiseJettonFunc_Intelligent(Player play, inquireInfo &inqInfo,vector<UINTS> &vCardType)
+string raiseJettonFunc_Intelligent(Player play, inquireInfo &inqInfo,vector<int> &vCardType)
 {
   string actionResult="";
 
@@ -614,7 +617,7 @@ string raiseJettonFunc_Intelligent(Player play, inquireInfo &inqInfo,vector<UINT
 
   return actionResult;
 }
-string callJettonFunc_Crazy(Player play, inquireInfo &inqInfo,vector<UINTS> &vCardType)
+string callJettonFunc_Crazy(Player play, inquireInfo &inqInfo,vector<int> &vCardType)
 {
   string actionResult="";
 
@@ -654,7 +657,7 @@ string callJettonFunc_Crazy(Player play, inquireInfo &inqInfo,vector<UINTS> &vCa
 
   return actionResult;
 }
-string callJettonFunc_Intelligent(Player play, inquireInfo &inqInfo,vector<UINTS> &vCardType)
+string callJettonFunc_Intelligent(Player play, inquireInfo &inqInfo,vector<int> &vCardType)
 {
   string actionResult="";
 
@@ -694,7 +697,7 @@ string callJettonFunc_Intelligent(Player play, inquireInfo &inqInfo,vector<UINTS
   return actionResult;
 }
 
-string checkActionFunc_Crazy(Player play, inquireInfo &inqInfo,vector<UINTS> &vCardType)
+string checkActionFunc_Crazy(Player play, inquireInfo &inqInfo,vector<int> &vCardType)
 {
   string actionResult="";
 
@@ -732,7 +735,7 @@ string checkActionFunc_Crazy(Player play, inquireInfo &inqInfo,vector<UINTS> &vC
   return actionResult;
 }
 
-string checkActionFunc_intelligent(Player play, inquireInfo &inqInfo,vector<UINTS> &vCardType)
+string checkActionFunc_intelligent(Player play, inquireInfo &inqInfo,vector<int> &vCardType)
 {
   string actionResult="";
 
@@ -763,8 +766,8 @@ string fastHandle(Player &play)
 
   string strCard1 = play.getCard(0);
   string strCard2 = play.getCard(1);
-  UINTS iCard1 = play.strConvertInt(strCard1[1]);
-  UINTS iCard12 = play.strConvertInt(strCard2[1]);
+  int iCard1 = play.strConvertInt(strCard1[1]);
+  int iCard12 = play.strConvertInt(strCard2[1]);
 
   if(iCard1+iCard12 >= 26)
     return " call ";
@@ -783,8 +786,8 @@ string action(Player &play ,inquireInfo & inqInfo)
   if(inqInfo.raiseNum ==0 && inqInfo.checkNum == 0 && inqInfo.callNum ==0 && inqInfo.foldNum == 0 && inqInfo.blindNum !=0)
     return fastHandle(play);
   ActionClass action_Int(play);
-  UINTS iCardNum = play.getCardNum();
-  vector<UINTS> vCardType = play.getMaxCardType();
+  int iCardNum = play.getCardNum();
+  vector<int> vCardType = play.getMaxCardType();
 
 
   if(iCardNum == 2)
@@ -1045,7 +1048,7 @@ string inquire(char *info , Player &play)
   memset(&inqInfo,'\0',sizeof(inqInfo));
   inqInfo.noFlopNum = inqInfo.checkNum = inqInfo.callNum = inqInfo.raiseNum = inqInfo.allinNum = inqInfo.noFlodLeastJetton =0;
 
-  UINTS otherSumBet = 0;
+  int otherSumBet = 0;
   while (*findbegin != 't')
     {
       s = "";
@@ -1063,7 +1066,7 @@ string inquire(char *info , Player &play)
         }
       if(vData[4] != "fold")
         {
-          UINTS jetton = atoi(vData[1].c_str());
+          int jetton = atoi(vData[1].c_str());
           inqInfo.noFlodLeastJetton = inqInfo.noFlodLeastJetton > jetton ?jetton:inqInfo.noFlodLeastJetton;
         }
       if(vData[4] == "check")
@@ -1084,10 +1087,10 @@ string inquire(char *info , Player &play)
     }
   findend = strchr(findbegin, '\n');
   *findend = '\0';
-  UINTS totalBet = atoi(findbegin+strlen("total pot: "));
+  int totalBet = atoi(findbegin+strlen("total pot: "));
   *findend = '\n';
 
-  UINTS myHaveBet = totalBet - otherSumBet;
+  int myHaveBet = totalBet - otherSumBet;
   play.setHaveBet(myHaveBet);
 
   inqInfo.noFlopNum = play.getPlayNum() - inqInfo.foldNum;
@@ -1116,7 +1119,7 @@ int main(int argc, char *argv[])
 
   addmy.sin_family = AF_INET;
   addmy.sin_addr.s_addr = inet_addr(argv[3]);
-  addmy.sin_port = htons((UINTS)(atoi(argv[4])));
+  addmy.sin_port = htons((int)(atoi(argv[4])));
 
 
  if(-1 == bind(sockfd, (struct sockaddr *)&addmy, sizeof(addmy)))
@@ -1127,9 +1130,9 @@ int main(int argc, char *argv[])
 
   address.sin_family = AF_INET;
   address.sin_addr.s_addr = inet_addr(argv[1]);
-  address.sin_port = htons((UINTS)(atoi(argv[2])));
+  address.sin_port = htons((int)(atoi(argv[2])));
 
-  UINTS len = sizeof(address);
+  int len = sizeof(address);
   if(!sockConnect(sockfd, &address, len)) return -1;
 
   printf("success connect IP:%s\n", argv[3]);
@@ -1180,28 +1183,30 @@ int main(int argc, char *argv[])
             sem_wait(&thread_sem);
             memcpy(readbuffer,tempbuffer,MAXREAD);
             sem_post(&main_sem);
-            switch(readbuffer[0])
+            int ipos = 0;
+            while(!isalpha(*readbuffer)) ipos++;
+            switch(readbuffer[ipos])
               {
               case 's'://two select ,,,warning 1:seat 2:showdown
-                if(readbuffer[1] == 'e')
+                if(readbuffer[ipos+1] == 'e')
                   {
-                    if(seat(readbuffer,play) == 0)
+                    if(seat(readbuffer+ipos,play) == 0)
                       {
                         bOver = true;
                         break;
                       }
                   }
                  else
-                  showdown(readbuffer,play);
+                  showdown(readbuffer+ipos,play);
                 break;
               case 'b':
-                blind(play, readbuffer);
+                blind(play, readbuffer+ipos);
                 break;
               case 'h':
               case 'f':
               case 't':
               case 'r':
-                addCard(readbuffer, play);
+                addCard(readbuffer+ipos, play);
                 break;
               case 'i':
                 {
@@ -1214,12 +1219,12 @@ int main(int argc, char *argv[])
 //                  else
 //                    s = inquire(readbuffer, play);
 
-                  s = inquire(readbuffer, play);
+                  s = inquire(readbuffer+ipos, play);
                   if(s.size() == 0)
                     printf("action error in inqire!!\n");
                   else
                     printf("action=%s\n",s.c_str());
-                  for(UINTS i=0 ; i<3 ; i++)
+                  for(int i=0 ; i<3 ; i++)
                     {
                      if(0 < write(sockfd , s.c_str() , s.size()+1))
                        break;
@@ -1317,11 +1322,11 @@ void pot_win(Player &play ,char *argv)
   sprintf(writeIn,"%s----%d\n","----Card",jishu);
   fwrite(writeIn, 1, strlen(writeIn), f);
   fflush(f);
-  vector<UINTS> cardtype = play.getMaxCardType();
+  vector<int> cardtype = play.getMaxCardType();
   for(int i=0;i<cardtype.size();i++)
     {
       s = cardtype[i];
-      sprintf(writeIn,"%d ",s.c_str());
+      sprintf(writeIn,"%d  ",s.c_str());
       fwrite(writeIn, 1, strlen(writeIn)+1, f);
       fflush(f);
     }
