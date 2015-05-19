@@ -142,6 +142,7 @@ Player::Player(string str)
 void Player::init()
 {
   m_sCard.clear();
+  m_vCardType.clear();
   for(int i=0 ; i<8 ; i++)
     {
       m_sSeatInfo[i]="";
@@ -196,12 +197,8 @@ void Player::setCard(string card)
 {
 //  m_sCard[m_iCardNum] = card;
   m_sCard.push_back(card);
-  ++m_iCardNum;
-  if(m_iCardNum == 2 || m_iCardNum >=5)
-    {
-      initCardType();
+  m_iCardNum = m_sCard.size();
 
-    }
   printf("%d hand ::%s \n",llll,card.c_str());
   fflush(stdout);
 //  printf("\n");
@@ -408,14 +405,17 @@ void operation(OperateType oType, char *info, Player &play)
   string s="";
   findtemp = strchr(findbegin, '\n');
   findbegin = findtemp+1;
+  char tmp[128]={0};
   while (*findbegin != '/')
     {
       s = "";
+      memset(tmp,'\0',128);
       vData.clear();
       findend = strchr(findbegin, '\n');
       *findend = '\0';
 
-      slipInfo(findbegin,vData);
+      memcpy(tmp,findbegin,strlen(findbegin)+1);
+      slipInfo(tmp,vData);
       *findend = '\n';
       findbegin = findend+1;
       if(oType == ADDCARD)
@@ -424,12 +424,17 @@ void operation(OperateType oType, char *info, Player &play)
             {
               play.setCard(s+vData[0][0]+vData[1][0]);
             }
+          else  perror("add card error!");
+        }
+      else
+        {
+          if(oType == BLIND)
+            {
+              play.setBlindInfo(vData);
+            }
           else perror("add card error!");
         }
-      else if(oType == BLIND)
-        {
-          play.setBlindInfo(vData);
-        }
+
 
     }
 
@@ -1180,43 +1185,71 @@ int main(int argc, char *argv[])
   res = pthread_create(&a_thread, NULL, thread_function, (void *)&sockfd);
   if(res != 0)
     printf("thread create error\n");
+  Player play(argv[5]);
+  FILE *f;
+  char path[1024] = {0};
+//  if(*(argv[5]) == '4')
+//   sprintf(path,"%s%sGetReplay.txt","/home/gfdong/",argv[5]);
+//  else
+//  sprintf(path,"%s%sGetReplay.txt","/home/game/huawei/sshcpy/",argv[5]);
+  f = fopen(path ,"a+");
+  int jj = 0;
   while(1)
     {
       string s ;
-      Player play(argv[5]);
+      play.init();
 
 //      f = fopen("./clientreplay.txt" ,"w+");
 
-
+      char writeIn[32]={0};
       while(1)
         {
+           int ipos = 0;
+            memset(writeIn,1,32);
+            memset(readbuffer,'\0',MAXREAD);
             sem_wait(&thread_sem);
-            memcpy(readbuffer,tempbuffer,MAXREAD);
+             while(0 == isalpha(readbuffer[ipos])) ipos++;
+             sprintf(readbuffer,"%s",tempbuffer+ipos);
+//            memcpy(readbuffer,tempbuffer,MAXREAD);
             sem_post(&main_sem);
-            int ipos = 0;
-            while(!isalpha(*readbuffer)) ipos++;
-            switch(readbuffer[ipos])
+
+
+
+//            fwrite(readbuffer, 1, strlen(readbuffer)+1, f);
+//            fflush(f);
+//            sprintf(writeIn,"\n%s--%d\n","-----lun",jj);
+//            fwrite(writeIn, 1, strlen(writeIn)+1, f);
+//            fflush(f);
+
+
+            switch(readbuffer[0])
               {
               case 's'://two select ,,,warning 1:seat 2:showdown
-                if(readbuffer[ipos+1] == 'e')
+                if(readbuffer[1] == 'e')
                   {
-                    if(seat(readbuffer+ipos,play) == 0)
+                    if(seat(readbuffer,play) == 0)
                       {
                         bOver = true;
                         break;
                       }
                   }
                  else
-                  showdown(readbuffer+ipos,play);
+                  showdown(readbuffer,play);
                 break;
               case 'b':
-                blind(play, readbuffer+ipos);
+                blind(play, readbuffer);
                 break;
               case 'h':
+                addCard(readbuffer, play);
+                break;
               case 'f':
+                addCard(readbuffer, play);
+                break;
               case 't':
+                addCard(readbuffer, play);
+                break;
               case 'r':
-                addCard(readbuffer+ipos, play);
+                addCard(readbuffer, play);
                 break;
               case 'i':
                 {
@@ -1229,7 +1262,7 @@ int main(int argc, char *argv[])
 //                  else
 //                    s = inquire(readbuffer, play);
 
-                  s = inquire(readbuffer+ipos, play);
+                  s = inquire(readbuffer, play);
                   if(s.size() == 0)
                     printf("action error in inqire!!\n");
                   else
@@ -1248,6 +1281,7 @@ int main(int argc, char *argv[])
 
               case 'p':
                 pot_win(play,argv[5]);
+                jj++;
                 break;
               case 'g':
                 bOver = true;
@@ -1256,7 +1290,14 @@ int main(int argc, char *argv[])
                 break;
 
               }
-
+            if(readbuffer[0] == 'h' )
+              {
+                int cardNum = play.getCardNum();
+                if(cardNum == 2 || cardNum >=5)
+                  {
+                    play.initCardType();
+                  }
+              }
             if(bOver) break;
 
       }
@@ -1265,9 +1306,10 @@ int main(int argc, char *argv[])
           printf("game over !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
           break;
         }
-//      fclose(f);
+
 
     }
+//  fclose(f);
   void *threadresult;
   pthread_join(a_thread,&threadresult);
   close(sockfd);
@@ -1312,6 +1354,9 @@ void pot_win(Player &play ,char *argv)
   FILE *f = NULL;
   static int jishu = 0;
   char path[1024] = {0};
+  if(*argv == '4')
+     sprintf(path,"%s%s.txt","/home/gfdong/",argv);
+  else
   sprintf(path,"%s%s.txt","/home/game/huawei/sshcpy/",argv);
   f = fopen(path ,"a+");
   int iCardNum = play.getCardNum();
