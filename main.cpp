@@ -10,11 +10,116 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <pthread.h>
 #include <algorithm>
-
-
+#include <semaphore.h>
+#include <cctype>
 using namespace std;
 
+
+template<class D>
+class DataBufferPool
+{
+private:
+ sem_t hEmpty;
+ sem_t hUseful;
+ pthread_mutex_t csDataChange;
+ int iMaxNum;            //总信号量数目
+ int iBufferSize;	 //单个数据存储空间大小
+ int iRead;                //度位置
+ int iWrite;	 //写位置
+ D **pData;	 //数据数组指针
+ int iErrorNum;  /*         1:内存不足，初始化失败
+
+     */
+
+public:
+ DataBufferPool(int maxnum,int bufsize)
+ {
+  iMaxNum = maxnum;
+  iBufferSize = bufsize;
+  iRead = iWrite = 0;
+  pData = NULL;
+  int res = 0;
+  res = sem_init(&hEmpty,0,iMaxNum);  //空信号量初始化
+  if(res != 0)
+    {
+      iErrorNum = 2;
+    }
+  res = sem_init(&hUseful,0,0);	 //可用信号量初始化
+  if(res != 0)
+    {
+      iErrorNum = 2;
+    }
+  pData = new D*[iMaxNum];	 //声明指针数组
+  for(int i=0;i<iMaxNum;i++)
+  {
+   pData[i] = new D[iBufferSize];	 //数据空间申请
+   if (pData[i] == NULL)
+   {
+    iErrorNum = 1;
+   }
+  }
+  res = pthread_mutex_init(&csDataChange,NULL);
+  if(res != 0)
+    {
+      iErrorNum = 3;
+    }
+ }
+ ~DataBufferPool()
+ {
+  for (int i=0;i<iMaxNum;i++)
+  {
+   delete [](pData[i]);
+  }
+  delete []pData;
+
+  sem_destroy(&hEmpty);
+  sem_destroy(&hUseful);
+  pthread_mutex_destroy(&csDataChange);
+
+ }
+ bool WriteData(void *data,int datasize)
+ {
+
+  sem_wait(&hEmpty);  //等待空信号量
+  pthread_mutex_lock(&csDataChange);//进入关键代码段，保护公共存储区
+  iWrite %= iMaxNum;
+  //////////////////////////////////////////////////////////////////////
+  //printf("produce %d \n",iWrite);//输出写入的地址，调试用
+  //////////////////////////////////////////////////////////////////////
+  if(datasize > iBufferSize) return false;
+  memcpy((void *)pData[iWrite],(void *)data,datasize*sizeof(D));
+  ++iWrite;
+  pthread_mutex_unlock(&csDataChange);
+  sem_post(&hUseful);
+  return true;
+ }
+ bool ReadData(void *data,int datasize)
+ {
+  sem_wait(&hUseful);//等待可用信号
+  pthread_mutex_lock(&csDataChange);
+  iRead %= iMaxNum;
+  /////////////////////////////////////////////////////////////////////
+  //printf("*********consume  %d \n",iRead);//输出读取的地址，调试用
+  /////////////////////////////////////////////////////////////////////
+  if(datasize > iBufferSize) return false;
+  memcpy((void *)data,(void *)pData[iRead],datasize*sizeof(D));
+  ++iRead;
+  pthread_mutex_unlock(&csDataChange);
+  sem_post(&hEmpty);
+  return true;
+ }
+};
+void *thread_function(void *arg);
+
+typedef struct _DataSturct
+{
+ int socknum;
+ void *pSome;
+}DataStruct;
+
+#define MAXSEMNUM 10
 int lunSum = 0;//use in action ,clear in addCard function
 #define LUNMAX 5
 #define RAISEMAX_CRAZZY 4
@@ -23,6 +128,7 @@ int lunSum = 0;//use in action ,clear in addCard function
 #define CALLMAX_INTEL 1
 #define CHECKMAX_INTEL 1
 
+bool bOver = false;
 int gHisPlayNum = 0;
 typedef struct _GameHis
 {
@@ -1069,7 +1175,7 @@ string action(Player &play ,inquireInfo & inqInfo)
     return " fold ";
 
 }
-#define MAXREAD 1024
+#define MAXREAD 256
 void pot_win(Player &play ,char *argv);
 
 int main(int argc, char *argv[])
@@ -1119,42 +1225,44 @@ int main(int argc, char *argv[])
   strcat(tempbuffer," ");
   while(-1 == write(sockfd , tempbuffer , strlen(tempbuffer)+1)) sleep(1);
 
+
+
   Player play(argv[5]);
   int llll = 0;
+  pthread_t a_thread;
+  DataBufferPool<char > databuf1(10,MAXREAD);
+  DataStruct *threadData = new DataStruct;
+  threadData->socknum = sockfd;
+  threadData->pSome = (void*)& databuf1;
+  int res = pthread_create(&a_thread, NULL, thread_function, (void *)threadData);
+  if(res != 0)
+    printf("thread create error\n");
   while(1)
     {
-      bool bOver = false;
       bool bBenJuOver = false;
       string s ;
       play.init();
       while(1)
         {
           memset(tempbuffer,'\0', MAXREAD);
-          memset(readbuffer,'\0', MAXREAD);
-          result = read(sockfd, readbuffer, MAXREAD);
-
-          if (result <= 0)
-          {
-                  printf("read fail\n");
-                  bOver = true;
-                  break;
-          }
-          int ipos = 0;
-          while(0 == isalpha(readbuffer[ipos])) ipos++;
-          sprintf(tempbuffer,"%s",readbuffer+ipos);
-          switch(tempbuffer[0])
+          memset(readbuffer,'\0',MAXREAD);
+          databuf1.ReadData((void*)readbuffer,MAXREAD);
+//          int ipos = 0;
+//          while(0 == isalpha(tempbuffer[ipos])) ipos++;
+//          sprintf(readbuffer,"%s",tempbuffer+ipos);
+          switch(readbuffer[0])
             {
             case 's'://two select ,,,warning 1:seat 2:showdown
-              if(tempbuffer[1] == 'e')
+              if(readbuffer[1] == 'e')
                 {
                   printf("%d seat\n",llll);
                   if(play.getJishuError() != 0) break;
-                  play.setSeat(tempbuffer);
+                  play.setSeat(readbuffer);
                   break;
                 }
                else
                 {
-                  play.showdown(tempbuffer);
+                  play.showdown(readbuffer);
                   break;
                 }
 
@@ -1162,35 +1270,35 @@ int main(int argc, char *argv[])
             case 'b':
               if(play.getJishuError() != 1) break;
               printf("%d blind\n",llll);
-              play.blind(tempbuffer);
+              play.blind(readbuffer);
               break;
             case 'h':
               printf("%d hold\n",llll);
-              play.addCard(tempbuffer);
+              play.addCard(readbuffer);
 
               break;
             case 'f':
               printf("%d flop\n",llll);
-              play.addCard(tempbuffer);
+              play.addCard(readbuffer);
 
               break;
             case 't':
               printf("%d turn\n",llll);
-              play.addCard(tempbuffer);
+              play.addCard(readbuffer);
 
               break;
             case 'r':
               printf("%d river\n",llll);
-              play.addCard(tempbuffer);
+              play.addCard(readbuffer);
 
               break;
             case 'i':
               {
-                  printf("%d success inquire ! strlen = %d\n",llll,strlen(tempbuffer));
+                  printf("%d success inquire ! strlen = %d\n",llll,strlen(readbuffer));
                   fflush(stdout);
                   inquireInfo inq;
                   memset(&inq,'\0',sizeof(inq));
-                  inq =  play.inquire(tempbuffer);
+                  inq =  play.inquire(readbuffer);
                   if(inq.foldNum)
                   if(!play.getCardStatus())
                     {
@@ -1239,11 +1347,38 @@ int main(int argc, char *argv[])
         }
 
     }
-
+  delete threadData;
   close(sockfd);
   return 0;
 }
 
+void *thread_function(void *arg)
+{
+  DataStruct *threadData = (DataStruct*)arg;
+  int sockfd = threadData->socknum;
+  DataBufferPool<char> *bufferPool =(DataBufferPool<char >*)(threadData->pSome);
+  int result;
+  char tempbuffer[MAXREAD];
+  while(1)
+    {
+      memset(tempbuffer,'\0', MAXREAD);
+      result = read(sockfd, tempbuffer, MAXREAD);
+      if (result > 0)
+        {
+          bufferPool->WriteData((void*)tempbuffer,MAXREAD);
+        }
+      else
+        {
+          printf("read fail\n");
+          bOver = true;
+          break;
+        }
+
+    }
+  char pexit[] = "thread exit!\n";
+  pthread_exit(pexit);
+
+}
 
 
 void pot_win(Player &play ,char *argv)
