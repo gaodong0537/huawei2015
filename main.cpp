@@ -10,15 +10,11 @@
 #include <string>
 #include <vector>
 #include <set>
-#include <pthread.h>
 #include <algorithm>
-#include <semaphore.h>
-#include <cctype>
+
+
 using namespace std;
 
-
-
-//typedef unsigned short int UINTS;
 int lunSum = 0;//use in action ,clear in addCard function
 #define LUNMAX 5
 #define RAISEMAX_CRAZZY 4
@@ -26,21 +22,8 @@ int lunSum = 0;//use in action ,clear in addCard function
 #define CALLMAX_CRAZY 2
 #define CALLMAX_INTEL 1
 #define CHECKMAX_INTEL 1
-#define MAXREAD 1024
 
-sem_t thread_sem;
-sem_t main_sem;
-char tempbuffer[MAXREAD];
-bool bOver = false;
-
-typedef struct _threadSturct
-{
-  vector<int> result;
-
-}threadStruct;
-void *thread_function(void *arg);
-
-int llll = 0;
+int gHisPlayNum = 0;
 typedef struct _GameHis
 {
   string ID;
@@ -56,6 +39,11 @@ typedef struct _GameHis
 
 }GameHis;
 
+typedef struct _inquireInfo{
+  int noFlopNum,checkNum,callNum ,raiseNum, allinNum, blindNum, foldNum, noFlodLeastJetton;
+}inquireInfo;
+
+
 class Player
 {
 
@@ -63,7 +51,7 @@ class Player
 public:
   Player(string str);
   void init();
-  void setSeat(const string &playID, const string &jetton, const string &money);
+  int setSeat(char *);
   int  getSeatPos(){return m_iSeatPos;}
   vector<string> getSeatInfo() { vector<string> seat ; for(int i=0 ; i<m_iPlayerNum ;i++) seat.push_back(m_sSeatInfo[i]); return seat; }
   void setCard( string card);
@@ -88,13 +76,22 @@ public:
   bool firstTwoCardIsPair( ){ return m_sCard[1][1] == m_sCard[0][1] ;}
   int getRaiseLeast(){ return m_iRaiseLeastBet;}
 //  void clearHist(){ gamehist.clear();}//zhi ji lu yi lun history
+
+  bool getCardStatus(){int i=getCardNum(); if(i ==2 || i >=5) return false; else return true;}
+  int getJishuError(){ return m_iJiShuError ;}
+
+  int addCard(char *info);
+  void blind(char *info);
+  inquireInfo inquire(char *info);
+  void showdown(char *downmsg);
 public:
   bool m_bChangeFrontHaveBet;
   int strConvertInt(char str);
 private:
-  //string m_sCard[7];//0,1 our card , 2 3 4 5 6 public card
+//  string m_sCard[7];//0,1 our card , 2 3 4 5 6 public card
   vector<string> m_sCard;
-  string m_sSeatInfo[8];//0:button, 1:small blind 2:big blind 3 4 5 6 7 other player
+//  string m_sSeatInfo[8];//0:button, 1:small blind 2:big blind 3 4 5 6 7 other player
+  vector<string> m_sSeatInfo;
   int m_iMoney[8];
   int m_iJetton[8];
   int m_iCardNum;
@@ -111,45 +108,38 @@ private:
   int m_iSeatPos;//wo de wei zhi
   string m_sMyID;//wo de ID
 
-
   vector<int> m_vCardType;
 
+  enum OperateType
+  {
+    ADDCARD,BLIND,INQUERE
+  };
+
+  void slipInfo( char *info , vector<string> &vData);
+  char* removeHead(char *seatInfo, string &rmData);
+  void operation(OperateType oType, char *info);
  // vector<GameHis> gamehist;
+
+
+  int m_iJiShuError ;
 };
 
 Player::Player(string str)
 {
-  m_sCard.clear();
-  for(int i=0 ; i<8 ; i++)
-    {
-      m_sSeatInfo[i]="";
-      m_iMoney[i] = 0;
-      m_iJetton[i] = 0;
-    }
-
-  m_iCardNum = 0;
-  m_iPlayerNum = 0;
-
+  init();
   m_sMyID = str;
-
-  m_iLeastBet = 0;
-  m_iMyJetton = 0;
-  m_iHaveBet = 0;
-  m_iFrontHaveBet = 0;
-  m_iSeatPos = 0;
 }
 
 void Player::init()
 {
   m_sCard.clear();
-  m_vCardType.clear();
   for(int i=0 ; i<8 ; i++)
     {
-      m_sSeatInfo[i]="";
+
       m_iMoney[i] = 0;
       m_iJetton[i] = 0;
     }
-
+  m_sSeatInfo.clear();
   m_iCardNum = 0;
   m_iPlayerNum = 0;
 
@@ -161,6 +151,106 @@ void Player::init()
   m_iHaveBet = 0;
   m_iFrontHaveBet = 0;
   m_iSeatPos = 0;
+  m_vCardType.clear();
+  m_iJiShuError = 0;
+
+}
+void Player::slipInfo( char *info , vector<string> &vData) //end of " " example "bbbb 1111 2222 \n"
+{
+  char *spacepos = NULL , *infotemp=info;
+  string s="";
+  while(NULL != (spacepos = strchr(infotemp, ' ')))
+    {
+      *spacepos = '\0';
+      s = infotemp;
+      vData.push_back(s);
+      *spacepos = ' ';
+      infotemp = spacepos+1;
+    }
+
+}
+
+char* Player::removeHead(char *seatInfo, string &rmData)
+{
+  char *posInfo = NULL;
+  if(NULL == (posInfo = strstr(seatInfo, rmData.c_str()))) return NULL;
+  return posInfo+strlen(rmData.c_str());
+}
+
+void Player::operation(OperateType oType, char *info)
+{
+
+  char *findbegin, *findend, *findtemp;
+  findbegin = info;
+  vector<string > vData;
+  string s="";
+  findtemp = strchr(findbegin, '\n');
+  findbegin = findtemp+1;
+  while (*findbegin != '/')
+    {
+      s = "";
+      vData.clear();
+      findend = strchr(findbegin, '\n');
+      *findend = '\0';
+
+      slipInfo(findbegin,vData);
+      *findend = '\n';
+      findbegin = findend+1;
+      if(oType == ADDCARD)
+        {
+          if(vData[0][0] == 'S' || vData[0][0] == 'H' || vData[0][0] == 'C' || vData[0][0] == 'D' )
+            {
+            setCard(s+vData[0][0]+vData[1][0]);
+            }
+          else perror("add card error!");
+        }
+      else if(oType == BLIND)
+        {
+          setBlindInfo(vData);
+        }
+      else
+        {
+          printf("operation error!!");
+
+        }
+    }
+
+}
+
+int Player::addCard(char *info)
+{
+  if(*info == 'h')
+    m_iCardNum = 2;
+  else if(*info == 'f')
+    m_iCardNum = 5;
+  else if(*info == 't')
+    m_iCardNum = 6;
+  else if(*info == 'r')
+    m_iCardNum = 7;
+  else
+    {
+      printf("add card error");
+      return -1;
+    }
+
+  operation(ADDCARD, info);
+
+  if(m_iCardNum == 2 || m_iCardNum >=5)
+    {
+      initCardType();
+
+    }
+
+
+  if(m_iCardNum > 2) lunSum =0;
+
+  m_iJiShuError++;
+  return 0;
+}
+void Player::setCard(string card)
+{
+  m_sCard.push_back(card);
+//  printf("%s\n",card.c_str());
 }
 void Player::setBlindInfo(vector<string> blindInfo)
 {
@@ -173,46 +263,61 @@ void Player::setBlindInfo(vector<string> blindInfo)
 }
 void Player::changeFrontBet(int frontbet)
 {
-
-
-      m_iFrontHaveBet = frontbet;
+     m_iFrontHaveBet = frontbet;
 
 }
-void Player::setSeat(const string &playID, const string &jetton, const string &money)
+int Player::setSeat(char *seatInfo)
 {
-  m_sSeatInfo[m_iPlayerNum] = playID;
-  m_iMoney[m_iPlayerNum] = atoi(money.c_str());
-  m_iJetton[m_iPlayerNum] = atoi(jetton.c_str());
+    init();
+    string sHead[3]={"button: ", "small blind: ","big blind: "};
+    char *findbegin, *findend, *findtemp;
+    findbegin = seatInfo;
+    vector<string > vData;
+    findtemp = strchr(findbegin, '\n');
+    findbegin = findtemp+1;
+    while (*findbegin != '/')
+      {
+        vData.clear();
+        if(*findbegin == 'b' && *(findbegin+1) == 'u')
+          findbegin = findbegin+sHead[0].size();
+        else if(*findbegin == 's')
+          findbegin = findbegin+sHead[1].size();
+        else if(*findbegin == 'b' && *(findbegin+1) == 'i')
+          findbegin = findbegin+sHead[2].size();
 
-  if(playID == m_sMyID)
-    {
-      m_iMyJetton = atoi(jetton.c_str());
-      m_iSeatPos = m_iPlayerNum;
-    }
+        findend = strchr(findbegin, '\n');
+        *findend = '\0';
 
-  ++m_iPlayerNum;
+        slipInfo(findbegin,vData);
+        *findend = '\n';
+        findbegin = findend+1;
+
+        m_sSeatInfo.push_back(vData[0]);
+        m_iMoney[m_iPlayerNum] = atoi(vData[1].c_str());
+        m_iJetton[m_iPlayerNum] = atoi(vData[2].c_str());
+        if(vData[0] == m_sMyID)
+          {
+            m_iMyJetton = atoi(vData[2].c_str());
+            m_iSeatPos = m_iPlayerNum;
+          }
+         ++m_iPlayerNum;
+      }
+
+   m_iJiShuError++;
+  return m_iPlayerNum;
+
 
 }
-void Player::setCard(string card)
+void Player::blind(char *info)
 {
-//  m_sCard[m_iCardNum] = card;
-  m_sCard.push_back(card);
-  m_iCardNum = m_sCard.size();
-
-  printf("%d hand ::%s \n",llll,card.c_str());
-  fflush(stdout);
-//  printf("\n");
-//  char pp[256] ={0};
-//  sprintf(pp,"/home/game/huawei/sshcpy/clientCardReplay/%s.txt",m_sMyID.c_str());
-//   FILE *f = fopen(pp ,"w+");
-
-//   fseek(f, 0 ,SEEK_END);
-//   fwrite(card.c_str(), 1,card.size()+1, f);
-//   fflush(f);
-//   fclose(f);
-
+  operation(BLIND, info);
+  m_iJiShuError++;
 }
 
+void Player::showdown(char *downmsg)
+{
+
+}
 int Player::strConvertInt(char str)
 {
   int i=0;
@@ -240,7 +345,7 @@ int Player::strConvertInt(char str)
 }
 void Player::initCardType()
 {
-  int typeCard[4]={0} ;//0:SPADES 1:HEARTS 2:CLUBS 3:DIAMONDS
+  vector<int> typeCard[4] ;//0:SPADES 1:HEARTS 2:CLUBS 3:DIAMONDS
   vector<int> digital ;
   int digiNum[13]={0};
   int shuzi;
@@ -252,152 +357,79 @@ void Player::initCardType()
       switch(m_sCard[i][0])
         {
         case 'S':
-          typeCard[0]++;
+          typeCard[0].push_back(shuzi);
           break;
         case 'H':
-          typeCard[1]++;
+          typeCard[1].push_back(shuzi);
           break;
         case 'C':
-          typeCard[2]++;
+          typeCard[2].push_back(shuzi);
           break;
         case 'D':
-          typeCard[3]++;
+          typeCard[3].push_back(shuzi);
           break;
         default:
           perror("card error!\n");
         }
       digital.push_back(shuzi);
     }
+  for(int i=0 ; i<4 ; i++)
+    sort(typeCard[i].begin(), typeCard[i].end());
   sort(digital.begin(), digital.end());
 
-  vector<int> returnresult;//dui zi return 1, tong hua return 2, qi ta return 3
-  m_vCardType.clear();
+// m_vCardType;//dui zi return 1, tong hua return 2, qi ta return 3
   if( 2 == m_iCardNum)
     {
-      returnresult.clear();
+      m_vCardType.clear();
       if (digital[0] == digital[1]) {
-          returnresult.push_back(1);
-          returnresult.push_back(digital[0]);
-          returnresult.push_back(digital[1]);
+          m_vCardType.push_back(1);
+          m_vCardType.push_back(digital[0]);
+          m_vCardType.push_back(digital[1]);
         }
-      else if(typeCard[0]==2 || typeCard[1] ==2 || typeCard[2] ==2 || typeCard[3] ==2)
+      else if(typeCard[0].size() ==2 || typeCard[1].size() ==2 || typeCard[2].size() ==2 || typeCard[3].size() ==2)
       {
-          returnresult.push_back(2);
-          returnresult.push_back(digital[0]);
-          returnresult.push_back(digital[1]);
+          m_vCardType.push_back(2);
+          m_vCardType.push_back(digital[0]);
+          m_vCardType.push_back(digital[1]);
       }
       else
         {
-          returnresult.push_back(3);
-          returnresult.push_back(digital[0]);
-          returnresult.push_back(digital[1]);
+          m_vCardType.push_back(3);
+          m_vCardType.push_back(digital[0]);
+          m_vCardType.push_back(digital[1]);
         }
 
     }
   else//5 6 7 first push the sort card and push the card's number of eatch of colour
     {
-      returnresult.clear();
+      m_vCardType.clear();
       for(int i=0 ; i<m_iCardNum; i++)
         {
-          returnresult.push_back(digital[i]);
+          m_vCardType.push_back(digital[i]);
         }
       for(int i=0 ; i<4 ; i++)
         {
-          returnresult.push_back(typeCard[i]);
+          m_vCardType.push_back(typeCard[i].size());
         }
       for(int i=0 ; i<13 ; i++)
         {
-          returnresult.push_back(digiNum[i]);
+          m_vCardType.push_back(digiNum[i]);
         }
     }
 
-  m_vCardType = returnresult;
-  printf(" %d hand:::::::" ,llll);
-  for(int i=0; i<returnresult.size() ;i++)
-    printf("%d",returnresult[i]);
-  printf("\n");
-  fflush(stdout);
+
+//  for(int i=0; i<m_vCardType.size() ;i++)
+//    printf("%d ",m_vCardType[i]);
+//  printf("\n");
+//  fflush(stdout);
 
 
 }
 vector<int> Player::getMaxCardType()
 {
-
-
   return m_vCardType;
-
 }
-void pot_win(Player &play,char *argv);
-enum OperateType
-{
-  ADDCARD,BLIND,INQUERE
-};
-void slipInfo( char *info , vector<string> &vData) //end of " " example "bbbb 1111 2222 \n"
-{
-  char *spacepos = NULL , *infotemp=info;
-  string s="";
-  while(NULL != (spacepos = strchr(infotemp, ' ')))
-    {
-      *spacepos = '\0';
-      s = infotemp;
-      vData.push_back(s);
-      *spacepos = ' ';
-      infotemp = spacepos+1;
-    }
-
-}
-
-char* removeHead(char *seatInfo, string &rmData)
-{
-  char *posInfo = NULL;
-  if(NULL == (posInfo = strstr(seatInfo, rmData.c_str()))) return NULL;
-  return posInfo+strlen(rmData.c_str());
-}
-
-
-
-int seat(char *seatInfo, Player &play)
-{
-  llll ++;
-  play.init();
-
-  string sHead[3]={"button: ", "small blind: ","big blind: "};
-  char *findbegin, *findend, *findtemp;
-  findbegin = seatInfo;
-  vector<string > vData;
-  string s="";
-  findtemp = strchr(findbegin, '\n');
-  findbegin = findtemp+1;
-  while (*findbegin != '/')
-    {
-      s = "";
-      vData.clear();
-      if(*findbegin == 'b' && *(findbegin+1) == 'u')
-        findbegin = findbegin+sHead[0].size();
-      else if(*findbegin == 's')
-        findbegin = findbegin+sHead[1].size();
-      else if(*findbegin == 'b' && *(findbegin+1) == 'i')
-        findbegin = findbegin+sHead[2].size();
-
-      findend = strchr(findbegin, '\n');
-      *findend = '\0';
-
-      slipInfo(findbegin,vData);
-      *findend = '\n';
-      findbegin = findend+1;
-       play.setSeat(vData[0], vData[1], vData[2]);
-
-    }
-
-  return play.getPlayNum();
-}
-
-void showdown(char *downmsg, Player &play)
-{
-
-}
-
-void operation(OperateType oType, char *info, Player &play)
+inquireInfo Player::inquire(char *info)
 {
   char *findbegin, *findend, *findtemp;
   findbegin = info;
@@ -405,46 +437,62 @@ void operation(OperateType oType, char *info, Player &play)
   string s="";
   findtemp = strchr(findbegin, '\n');
   findbegin = findtemp+1;
-  char tmp[128]={0};
-  while (*findbegin != '/')
+  bool bChangeFrontHaveBet = false;
+
+  inquireInfo inqInfo;
+  memset(&inqInfo,'\0',sizeof(inqInfo));
+  inqInfo.noFlopNum = inqInfo.checkNum = inqInfo.callNum = inqInfo.raiseNum = inqInfo.allinNum = inqInfo.noFlodLeastJetton =0;
+
+  int otherSumBet = 0;
+  while (*findbegin != 't')
     {
       s = "";
-      memset(tmp,'\0',128);
       vData.clear();
       findend = strchr(findbegin, '\n');
       *findend = '\0';
 
-      memcpy(tmp,findbegin,strlen(findbegin)+1);
-      slipInfo(tmp,vData);
+      slipInfo(findbegin,vData);
       *findend = '\n';
       findbegin = findend+1;
-      if(oType == ADDCARD)
+      if(vData[4] != "fold" && bChangeFrontHaveBet == false)
         {
-          if(vData[0][0] == 'S' || vData[0][0] == 'H' || vData[0][0] == 'C' || vData[0][0] == 'D' )
-            {
-              play.setCard(s+vData[0][0]+vData[1][0]);
-            }
-          else  perror("add card error!");
+          changeFrontBet(atoi(vData[3].c_str()));
+          bChangeFrontHaveBet = true;
         }
-      else
+      if(vData[4] != "fold")
         {
-          if(oType == BLIND)
-            {
-              play.setBlindInfo(vData);
-            }
-          else perror("add card error!");
+          int jetton = atoi(vData[1].c_str());
+          inqInfo.noFlodLeastJetton = inqInfo.noFlodLeastJetton > jetton ?jetton:inqInfo.noFlodLeastJetton;
         }
+      if(vData[4] == "check")
+         ++inqInfo.checkNum;
+         else if(vData[4] == "call")
+         ++inqInfo.callNum;
+         else if(vData[4] == "raise")
+         ++inqInfo.raiseNum;
+         else if(vData[4] == "all_in")
+         ++inqInfo.allinNum;
+      else if(vData[4] == "blind")
+        ++inqInfo.blindNum;
+      else if(vData[4] == "fold")
+        ++inqInfo.foldNum;
 
+      otherSumBet += atoi(vData[3].c_str());
 
     }
+  findend = strchr(findbegin, '\n');
+  *findend = '\0';
+  int totalBet = atoi(findbegin+strlen("total pot: "));
+  *findend = '\n';
+
+  int myHaveBet = totalBet - otherSumBet;
+  setHaveBet(myHaveBet);
+
+  inqInfo.noFlopNum = m_iPlayerNum- inqInfo.foldNum;
+  return inqInfo;
 
 }
-int addCard(char *info ,Player &play)
-{
-  operation(ADDCARD, info, play);
-  if(play.getCardNum() > 2) lunSum =0;
-  return 0;
-}
+
 
 bool sockConnect(int &sockfd, struct sockaddr_in *sockaddr , int &len)
 {
@@ -466,9 +514,7 @@ bool sockConnect(int &sockfd, struct sockaddr_in *sockaddr , int &len)
 }
 
 
-typedef struct _inquireInfo{
-  int noFlopNum,checkNum,callNum ,raiseNum, allinNum, blindNum, foldNum, noFlodLeastJetton;
-}inquireInfo;
+
 
 
 
@@ -553,16 +599,14 @@ string raiseJettonFunc_Crazy(Player &play, inquireInfo &inqInfo,vector<int> &vCa
               }
             else
               {
-                sprintf(cLeatBet,"%d ",action_Int.leastBet);
-                strLeatBet = cLeatBet;
-                actionResult = actionResult+action_Int.actionHead[2] + strLeatBet;
+                actionResult = actionResult+action_Int.actionHead[1] + strLeatBet;
                 lunSum++;
               }
 
           }
         else if(action_Int.myRemJetton >  action_Int.leastBet)
           {
-            actionResult = actionResult +action_Int.actionHead[0];
+            actionResult = actionResult +action_Int.actionHead[1];
           }
         else
           {
@@ -799,6 +843,7 @@ string fastHandle(Player &play)
 
 string action(Player &play ,inquireInfo & inqInfo)
 {
+
   if(inqInfo.raiseNum ==0 && inqInfo.checkNum == 0 && inqInfo.callNum ==0 && inqInfo.foldNum == 0 && inqInfo.blindNum !=0)
     return fastHandle(play);
   ActionClass action_Int(play);
@@ -812,12 +857,12 @@ string action(Player &play ,inquireInfo & inqInfo)
       {
           if(vCardType[1] >= 12  )
             {
-              return raiseJettonFunc_Crazy(play, inqInfo, vCardType);
+              return raiseJettonFunc_Intelligent(play, inqInfo, vCardType);
             }
           else if(vCardType[1] >=8)
             {
               if(inqInfo.raiseNum <2 )
-                return raiseJettonFunc_Crazy(play,inqInfo,vCardType);
+                return raiseJettonFunc_Intelligent(play,inqInfo,vCardType);
               else
                 return callJettonFunc_Intelligent(play,inqInfo,vCardType);
 
@@ -825,7 +870,7 @@ string action(Player &play ,inquireInfo & inqInfo)
           else
             {
               if(inqInfo.raiseNum ==0 && inqInfo.noFlopNum < action_Int.iPlayNum/2)
-                return callJettonFunc_Crazy(play,inqInfo,vCardType);
+                return callJettonFunc_Intelligent(play,inqInfo,vCardType);
               else
                 return checkActionFunc_Crazy(play,inqInfo,vCardType);
 
@@ -835,27 +880,14 @@ string action(Player &play ,inquireInfo & inqInfo)
       }
       else if(vCardType[0] == 2)//tong hua
         {
-            if(vCardType[2]+vCardType[1] >= 26  )
+            if(vCardType[2]+vCardType[1] >= 26  || (vCardType[2]+vCardType[1] >= 25 && vCardType[1] == 12)
+               || (vCardType[2]+vCardType[1] >= 25 && vCardType[1] == 11) )
              {
                 if(inqInfo.raiseNum ==0 )
-                  return raiseJettonFunc_Crazy(play,inqInfo,vCardType);
+                  return callJettonFunc_Crazy(play,inqInfo,vCardType);
                 else
-                return raiseJettonFunc_Intelligent(play,inqInfo,vCardType);
+                return callJettonFunc_Intelligent(play,inqInfo,vCardType);
 
-             }
-            else if(vCardType[2]+vCardType[1] >= 25 && vCardType[1] == 12)//K Q
-             {
-                if(inqInfo.raiseNum == 0)
-                  return raiseJettonFunc_Intelligent(play,inqInfo,vCardType);
-                else
-                 return callJettonFunc_Crazy(play,inqInfo,vCardType);
-             }
-            else if((vCardType[2]+vCardType[1] >= 25 && vCardType[1] == 11) )//A J
-             {
-                if(inqInfo.raiseNum == 0)
-                return  callJettonFunc_Crazy(play,inqInfo,vCardType);
-                else
-                 return callJettonFunc_Intelligent(play,inqInfo,vCardType);
              }
             else if(vCardType[2]+vCardType[1] >= 24)//A 10 and k J
              {
@@ -879,37 +911,24 @@ string action(Player &play ,inquireInfo & inqInfo)
           }
       else
         {
-               if(vCardType[2]+vCardType[1] >= 26  )
-                {
-                   if(inqInfo.raiseNum ==0 )
-                     return raiseJettonFunc_Intelligent(play,inqInfo,vCardType);
-                   else
-                   return callJettonFunc_Crazy(play,inqInfo,vCardType);
+          if(vCardType[2]+vCardType[1] >= 26  || (vCardType[2]+vCardType[1] >= 25 && vCardType[1] == 12)
+             || (vCardType[2]+vCardType[1] >= 25 && vCardType[1] == 11) )
+           {
+              if(inqInfo.raiseNum ==0 )
+                return callJettonFunc_Crazy(play,inqInfo,vCardType);
+              else
+              return callJettonFunc_Intelligent(play,inqInfo,vCardType);
 
-                }
-               else if(vCardType[2]+vCardType[1] >= 25 && vCardType[1] == 12)//K Q
-                {
-                   if(inqInfo.raiseNum == 0)
-                     return callJettonFunc_Crazy(play,inqInfo,vCardType);
-                   else
+           }
+           else
+             {
+                  if(inqInfo.raiseNum == 0 && action_Int.mypos <= 2 && inqInfo.noFlopNum == 3-action_Int.mypos && vCardType[2] >= 13 && vCardType[1]+vCardType[2]>=22)
                     return callJettonFunc_Intelligent(play,inqInfo,vCardType);
-                }
-               else if((vCardType[2]+vCardType[1] >= 25 && vCardType[1] == 11) )//A J
-                {
-                   if(inqInfo.raiseNum == 0 && inqInfo.noFlopNum == 3-action_Int.mypos )
-                    return  callJettonFunc_Intelligent(play,inqInfo,vCardType);
-                   else
+                  if( inqInfo.raiseNum == 0 &&action_Int.iPlayNum/2 < inqInfo.foldNum  && vCardType[2]+vCardType[1] >21 )
                     return checkActionFunc_Crazy(play,inqInfo,vCardType);
-                }
-               else
-                 {
-                      if(inqInfo.raiseNum == 0 && action_Int.mypos <= 2 && inqInfo.noFlopNum == 3-action_Int.mypos && vCardType[2] >= 13 && vCardType[1]+vCardType[2]>=22)
-                        return callJettonFunc_Intelligent(play,inqInfo,vCardType);
-                      if( inqInfo.raiseNum == 0 &&action_Int.iPlayNum/2 < inqInfo.foldNum  && vCardType[2]+vCardType[1] >21 )
-                        return checkActionFunc_Crazy(play,inqInfo,vCardType);
-                      else
-                       return checkActionFunc_intelligent(play,inqInfo,vCardType);
-                }
+                  else
+                   return checkActionFunc_intelligent(play,inqInfo,vCardType);
+            }
 
         }
       }
@@ -940,7 +959,7 @@ string action(Player &play ,inquireInfo & inqInfo)
         return raiseJettonFunc_Crazy(play, inqInfo, vCardType);
       //htread-of-a-kind
       if((firstCheck+secondCheck) == 3)
-        return raiseJettonFunc_Crazy(play, inqInfo, vCardType);
+        return raiseJettonFunc_Intelligent(play, inqInfo, vCardType);
       //two pair and first two card is not pair
       if((firstCheck+secondCheck == 4) && !play.firstTwoCardIsPair())
         return raiseJettonFunc_Intelligent(play, inqInfo, vCardType);
@@ -1005,7 +1024,7 @@ string action(Player &play ,inquireInfo & inqInfo)
         return checkActionFunc_intelligent(play, inqInfo, vCardType);
 
     }
-  else
+  else if(iCardNum == 7)
     {
       //judge full house or thread-of-a-kind or two pair
       int firstCheck,secondCheck;
@@ -1046,80 +1065,12 @@ string action(Player &play ,inquireInfo & inqInfo)
       else
         return checkActionFunc_intelligent(play, inqInfo, vCardType);
     }
+  else
+    return " fold ";
 
 }
-
-
-string inquire(char *info , Player &play)
-{
-  char *findbegin, *findend, *findtemp;
-  findbegin = info;
-  vector<string > vData;
-  string s="";
-  findtemp = strchr(findbegin, '\n');
-  findbegin = findtemp+1;
-  bool bChangeFrontHaveBet = false;
-
-  inquireInfo inqInfo;
-  memset(&inqInfo,'\0',sizeof(inqInfo));
-  inqInfo.noFlopNum = inqInfo.checkNum = inqInfo.callNum = inqInfo.raiseNum = inqInfo.allinNum = inqInfo.noFlodLeastJetton =0;
-
-  int otherSumBet = 0;
-  while (*findbegin != 't')
-    {
-      s = "";
-      vData.clear();
-      findend = strchr(findbegin, '\n');
-      *findend = '\0';
-
-      slipInfo(findbegin,vData);
-      *findend = '\n';
-      findbegin = findend+1;
-      if(vData[4] != "fold" && bChangeFrontHaveBet == false)
-        {
-          play.changeFrontBet(atoi(vData[3].c_str()));
-          bChangeFrontHaveBet = true;
-        }
-      if(vData[4] != "fold")
-        {
-          int jetton = atoi(vData[1].c_str());
-          inqInfo.noFlodLeastJetton = inqInfo.noFlodLeastJetton > jetton ?jetton:inqInfo.noFlodLeastJetton;
-        }
-      if(vData[4] == "check")
-         ++inqInfo.checkNum;
-         else if(vData[4] == "call")
-         ++inqInfo.callNum;
-         else if(vData[4] == "raise")
-         ++inqInfo.raiseNum;
-         else if(vData[4] == "all_in")
-         ++inqInfo.allinNum;
-      else if(vData[4] == "blind")
-        ++inqInfo.blindNum;
-      else if(vData[4] == "fold")
-        ++inqInfo.foldNum;
-
-      otherSumBet += atoi(vData[3].c_str());
-
-    }
-  findend = strchr(findbegin, '\n');
-  *findend = '\0';
-  int totalBet = atoi(findbegin+strlen("total pot: "));
-  *findend = '\n';
-
-  int myHaveBet = totalBet - otherSumBet;
-  play.setHaveBet(myHaveBet);
-
-  inqInfo.noFlopNum = play.getPlayNum() - inqInfo.foldNum;
-  return action(play,inqInfo);
-
-}
-
-
-void blind(Player &play , char *info)
-{
-  operation(BLIND, info, play);
-}
-
+#define MAXREAD 1024
+void pot_win(Player &play ,char *argv);
 
 int main(int argc, char *argv[])
 {
@@ -1131,6 +1082,8 @@ int main(int argc, char *argv[])
   struct sockaddr_in address , addmy;
   memset(&address , 0 ,sizeof(address));
   memset(&addmy , 0 , sizeof(addmy));
+  int result;
+
   sockfd = socket(AF_INET , SOCK_STREAM ,0);
 
   addmy.sin_family = AF_INET;
@@ -1152,11 +1105,11 @@ int main(int argc, char *argv[])
   if(!sockConnect(sockfd, &address, len)) return -1;
 
   printf("success connect IP:%s\n", argv[3]);
-
-  char regbuffer[MAXREAD];
+  char tempbuffer[MAXREAD];
+//  char regbuffer[MAXREAD];
   char readbuffer[MAXREAD];
   memset(tempbuffer,'\0', MAXREAD);
-  memset(regbuffer,'\0',MAXREAD);
+//  memset(regbuffer,'\0',MAXREAD);
   memset(readbuffer,'\0',MAXREAD);
 
   strcpy(tempbuffer,"reg: ");
@@ -1164,199 +1117,140 @@ int main(int argc, char *argv[])
   strcat(tempbuffer," ");
   strcat(tempbuffer,argv[5]);
   strcat(tempbuffer," ");
+  while(-1 == write(sockfd , tempbuffer , strlen(tempbuffer)+1)) sleep(1);
 
-//  memcpy(regbuffer,tempbuffer,strlen(tempbuffer)+1);
-
-  if(-1 == write(sockfd , tempbuffer , strlen(tempbuffer)+1))
-  {
-   printf("write failed\n");
-   return -1;
-  }
-
-
-  int res;
-  res = sem_init(&thread_sem,0,0);
-  if(res != 0)
-    printf("semp error\n");
-  res = sem_init(&main_sem,0,0);
-  if(res !=0)
-    printf("semp error\n");
-  pthread_t a_thread;
-  res = pthread_create(&a_thread, NULL, thread_function, (void *)&sockfd);
-  if(res != 0)
-    printf("thread create error\n");
   Player play(argv[5]);
-  FILE *f;
-  char path[1024] = {0};
-//  if(*(argv[5]) == '4')
-//   sprintf(path,"%s%sGetReplay.txt","/home/gfdong/",argv[5]);
-//  else
-//  sprintf(path,"%s%sGetReplay.txt","/home/game/huawei/sshcpy/",argv[5]);
-  f = fopen(path ,"a+");
-  int jj = 0;
+  int llll = 0;
   while(1)
     {
+      bool bOver = false;
+      bool bBenJuOver = false;
       string s ;
       play.init();
-
-//      f = fopen("./clientreplay.txt" ,"w+");
-
-      char writeIn[32]={0};
       while(1)
         {
-           int ipos = 0;
-            memset(writeIn,1,32);
-            memset(readbuffer,'\0',MAXREAD);
-            sem_wait(&thread_sem);
-             while(0 == isalpha(readbuffer[ipos])) ipos++;
-             sprintf(readbuffer,"%s",tempbuffer+ipos);
-//            memcpy(readbuffer,tempbuffer,MAXREAD);
-            sem_post(&main_sem);
+          memset(tempbuffer,'\0', MAXREAD);
+          memset(readbuffer,'\0', MAXREAD);
+          result = read(sockfd, readbuffer, MAXREAD);
 
-
-
-//            fwrite(readbuffer, 1, strlen(readbuffer)+1, f);
-//            fflush(f);
-//            sprintf(writeIn,"\n%s--%d\n","-----lun",jj);
-//            fwrite(writeIn, 1, strlen(writeIn)+1, f);
-//            fflush(f);
-
-
-            switch(readbuffer[0])
-              {
-              case 's'://two select ,,,warning 1:seat 2:showdown
-                if(readbuffer[1] == 'e')
-                  {
-                    if(seat(readbuffer,play) == 0)
-                      {
-                        bOver = true;
-                        break;
-                      }
-                  }
-                 else
-                  showdown(readbuffer,play);
-                break;
-              case 'b':
-                blind(play, readbuffer);
-                break;
-              case 'h':
-                addCard(readbuffer, play);
-                break;
-              case 'f':
-                addCard(readbuffer, play);
-                break;
-              case 't':
-                addCard(readbuffer, play);
-                break;
-              case 'r':
-                addCard(readbuffer, play);
-                break;
-              case 'i':
+          if (result <= 0)
+          {
+                  printf("read fail\n");
+                  bOver = true;
+                  break;
+          }
+          int ipos = 0;
+          while(0 == isalpha(readbuffer[ipos])) ipos++;
+          sprintf(tempbuffer,"%s",readbuffer+ipos);
+          switch(tempbuffer[0])
+            {
+            case 's'://two select ,,,warning 1:seat 2:showdown
+              if(tempbuffer[1] == 'e')
                 {
+                  printf("%d seat\n",llll);
+                  if(play.getJishuError() != 0) break;
+                  play.setSeat(tempbuffer);
+                  break;
+                }
+               else
+                {
+                  play.showdown(tempbuffer);
+                  break;
+                }
 
 
-                  printf("%d success inquire ! strlen = %d\n",llll,strlen(readbuffer));
+            case 'b':
+              if(play.getJishuError() != 1) break;
+              printf("%d blind\n",llll);
+              play.blind(tempbuffer);
+              break;
+            case 'h':
+              printf("%d hold\n",llll);
+              play.addCard(tempbuffer);
+
+              break;
+            case 'f':
+              printf("%d flop\n",llll);
+              play.addCard(tempbuffer);
+
+              break;
+            case 't':
+              printf("%d turn\n",llll);
+              play.addCard(tempbuffer);
+
+              break;
+            case 'r':
+              printf("%d river\n",llll);
+              play.addCard(tempbuffer);
+
+              break;
+            case 'i':
+              {
+                  printf("%d success inquire ! strlen = %d\n",llll,strlen(tempbuffer));
                   fflush(stdout);
-//                  if(play.getCard(0) == "")
-//                    s = " fold ";
-//                  else
-//                    s = inquire(readbuffer, play);
+                  inquireInfo inq;
+                  memset(&inq,'\0',sizeof(inq));
+                  inq =  play.inquire(tempbuffer);
+                  if(inq.foldNum)
+                  if(!play.getCardStatus())
+                    {
 
-                  s = inquire(readbuffer, play);
+                      s = action(play,inq);
+                    }
+
+                  else
+                    s = " fold ";
                   if(s.size() == 0)
                     printf("action error in inqire!!\n");
                   else
                     printf("action=%s\n",s.c_str());
-                  for(int i=0 ; i<3 ; i++)
-                    {
-                     if(0 < write(sockfd , s.c_str() , s.size()+1))
-                       break;
-                     else if(i==2) return -1;
-                      sleep(1);
-                    }
 
-
+                  write(sockfd , s.c_str() , s.size()+1);
                   break;
-                }
-
-              case 'p':
-                pot_win(play,argv[5]);
-                jj++;
-                break;
-              case 'g':
-                bOver = true;
-                break;
-               default:
-                break;
+//                printf("%d inqire\n" ,llll);
+//                s = " fold \n";
+//                write(sockfd , s.c_str() , s.size()+1);
 
               }
-            if(readbuffer[0] == 'h' )
-              {
-                int cardNum = play.getCardNum();
-                if(cardNum == 2 || cardNum >=5)
-                  {
-                    play.initCardType();
-                  }
-              }
-            if(bOver) break;
+
+            case 'p':
+             // pot_win(play ,argv[5]);
+              printf("%d potwin\n",llll);
+              bBenJuOver = true;
+              break;
+            case 'g':
+              bOver = true;
+              break;
+             default:
+              printf("Error......................\n");
+              break;
+
+            }
+          if(bBenJuOver) break;
+          if(bOver) break;
+
 
       }
+      llll++;
       if(bOver)
         {
           printf("game over !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
           break;
         }
 
-
     }
-//  fclose(f);
-  void *threadresult;
-  pthread_join(a_thread,&threadresult);
+
   close(sockfd);
   return 0;
 }
 
-void *thread_function(void *arg)
-{
-  bool bOver = false;
-  int result;
-  int sockfd = *((int*)arg);
-  while(1)
-    {
-      memset(tempbuffer,'\0', MAXREAD);
 
-      for(int i=0 ; i<3 ;i++)
-        {
-         result = read(sockfd, tempbuffer, MAXREAD);
-
-         if (result > 0) break;
-         if(i != 2) continue;
-         else
-            {
-              printf("read fail\n");
-              bOver = true;
-              break;
-            }
-        }
-      sem_post(&thread_sem);
-      if(bOver == true) break;
-
-      sem_wait(&main_sem);
-
-    }
-  char pexit[] = "thread exit!\n";
-  pthread_exit(pexit);
-
-}
 
 void pot_win(Player &play ,char *argv)
 {
   FILE *f = NULL;
   static int jishu = 0;
   char path[1024] = {0};
-  if(*argv == '4')
-     sprintf(path,"%s%s.txt","/home/gfdong/",argv);
-  else
   sprintf(path,"%s%s.txt","/home/game/huawei/sshcpy/",argv);
   f = fopen(path ,"a+");
   int iCardNum = play.getCardNum();
@@ -1369,7 +1263,7 @@ void pot_win(Player &play ,char *argv)
       fwrite(writeIn, 1, strlen(writeIn)+1, f);
       fflush(f);
     }
-  sprintf(writeIn,"%s----%d\n","----Card",jishu);
+  sprintf(writeIn,"%s----%d-----%d\n","----Card",jishu, iCardNum);
   fwrite(writeIn, 1, strlen(writeIn), f);
   fflush(f);
   vector<int> cardtype = play.getMaxCardType();
