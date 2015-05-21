@@ -16,7 +16,7 @@
 #include <cctype>
 using namespace std;
 
-
+using namespace std;
 template<class D>
 class DataBufferPool
 {
@@ -24,12 +24,12 @@ private:
  sem_t hEmpty;
  sem_t hUseful;
  pthread_mutex_t csDataChange;
- int iMaxNum;            //总信号量数目
- int iBufferSize;	 //单个数据存储空间大小
- int iRead;                //度位置
- int iWrite;	 //写位置
- D **pData;	 //数据数组指针
- int iErrorNum;  /*         1:内存不足，初始化失败
+ int iMaxNum;            //??????
+ int iBufferSize;	 //??????????
+ int iRead;                //???
+ int iWrite;	 //???
+ D **pData;	 //??????
+ int iErrorNum;  /*         1:????,?????
 
      */
 
@@ -41,20 +41,20 @@ public:
   iRead = iWrite = 0;
   pData = NULL;
   int res = 0;
-  res = sem_init(&hEmpty,0,iMaxNum);  //空信号量初始化
+  res = sem_init(&hEmpty,0,iMaxNum);  //???????
   if(res != 0)
     {
       iErrorNum = 2;
     }
-  res = sem_init(&hUseful,0,0);	 //可用信号量初始化
+  res = sem_init(&hUseful,0,0);	 //????????
   if(res != 0)
     {
       iErrorNum = 2;
     }
-  pData = new D*[iMaxNum];	 //声明指针数组
+  pData = new D*[iMaxNum];	 //??????
   for(int i=0;i<iMaxNum;i++)
   {
-   pData[i] = new D[iBufferSize];	 //数据空间申请
+   pData[i] = new D[iBufferSize];	 //??????
    if (pData[i] == NULL)
    {
     iErrorNum = 1;
@@ -82,11 +82,11 @@ public:
  bool WriteData(void *data,int datasize)
  {
 
-  sem_wait(&hEmpty);  //等待空信号量
-  pthread_mutex_lock(&csDataChange);//进入关键代码段，保护公共存储区
+  sem_wait(&hEmpty);  //??????
+  pthread_mutex_lock(&csDataChange);//???????,???????
   iWrite %= iMaxNum;
   //////////////////////////////////////////////////////////////////////
-  //printf("produce %d \n",iWrite);//输出写入的地址，调试用
+  //printf("produce %d \n",iWrite);//???????,???
   //////////////////////////////////////////////////////////////////////
   if(datasize > iBufferSize) return false;
   memcpy((void *)pData[iWrite],(void *)data,datasize*sizeof(D));
@@ -97,11 +97,11 @@ public:
  }
  bool ReadData(void *data,int datasize)
  {
-  sem_wait(&hUseful);//等待可用信号
+  sem_wait(&hUseful);//??????
   pthread_mutex_lock(&csDataChange);
   iRead %= iMaxNum;
   /////////////////////////////////////////////////////////////////////
-  //printf("*********consume  %d \n",iRead);//输出读取的地址，调试用
+  //printf("*********consume  %d \n",iRead);//???????,???
   /////////////////////////////////////////////////////////////////////
   if(datasize > iBufferSize) return false;
   memcpy((void *)data,(void *)pData[iRead],datasize*sizeof(D));
@@ -1181,184 +1181,174 @@ string action(Player &play ,inquireInfo & inqInfo)
 }
 #define MAXREAD 512
 void pot_win(Player &play ,char *argv);
-
 int main(int argc, char *argv[])
 {
-  if(argc != 6){
-  printf("argc error\n");
-   return -1;
-  }
-  int sockfd;
-  struct sockaddr_in address , addmy;
-  memset(&address , 0 ,sizeof(address));
-  memset(&addmy , 0 , sizeof(addmy));
-  int result;
+	if(argc != 6){
+	printf("argc error\n");
+	return -1;
+	}
+	int sockfd;
+	struct sockaddr_in address , addmy;
+	memset(&address , 0 ,sizeof(address));
+	memset(&addmy , 0 , sizeof(addmy));
+	int result;
 
-  sockfd = socket(AF_INET , SOCK_STREAM ,0);
+	sockfd = socket(AF_INET , SOCK_STREAM ,0);
 
-  addmy.sin_family = AF_INET;
-  addmy.sin_addr.s_addr = inet_addr(argv[3]);
-  addmy.sin_port = htons((int)(atoi(argv[4])));
-
-
- if(-1 == bind(sockfd, (struct sockaddr *)&addmy, sizeof(addmy)))
-    {
-      printf("Error : addmy bind failed!\n");
-      return -1;
-    }
-
-  address.sin_family = AF_INET;
-  address.sin_addr.s_addr = inet_addr(argv[1]);
-  address.sin_port = htons((int)(atoi(argv[2])));
-
-  int len = sizeof(address);
-  if(!sockConnect(sockfd, &address, len)) return -1;
-
-  printf("success connect IP:%s\n", argv[3]);
-  char tempbuffer[MAXREAD];
-//  char regbuffer[MAXREAD];
-  char readbuffer[MAXREAD];
-  memset(tempbuffer,'\0', MAXREAD);
-//  memset(regbuffer,'\0',MAXREAD);
-  memset(readbuffer,'\0',MAXREAD);
-
-  strcpy(tempbuffer,"reg: ");
-  strcat(tempbuffer,argv[5]);
-  strcat(tempbuffer," ");
-  strcat(tempbuffer,argv[5]);
-  strcat(tempbuffer," need_notify ");
-
-  while(-1 == write(sockfd , tempbuffer , strlen(tempbuffer)+1)) sleep(1);
+	addmy.sin_family = AF_INET;
+	addmy.sin_addr.s_addr = inet_addr(argv[3]);
+	addmy.sin_port = htons((int)(atoi(argv[4])));
 
 
+	if(-1 == bind(sockfd, (struct sockaddr *)&addmy, sizeof(addmy)))
+	{
+	  printf("Error : addmy bind failed!\n");
+	  return -1;
+	}
 
-  Player play(argv[5]);
-  int llll = 0;
-  pthread_t a_thread;
-  DataBufferPool<char > databuf1(10,MAXREAD);
-  DataStruct *threadData = new DataStruct;
-  threadData->socknum = sockfd;
-  threadData->pSome = (void*)& databuf1;
-  int res = pthread_create(&a_thread, NULL, thread_function, (void *)threadData);
-  if(res != 0)
-    printf("thread create error\n");
-  while(1)
-    {
-      bool bBenJuOver = false;
-      string s ;
-      play.init();
-      while(1)
-        {
-          memset(tempbuffer,'\0', MAXREAD);
-          memset(readbuffer,'\0',MAXREAD);
-          if(bOver) break;
-          databuf1.ReadData((void*)readbuffer,MAXREAD);
-//          int ipos = 0;
-//          while(0 == isalpha(tempbuffer[ipos])) ipos++;
-//          sprintf(readbuffer,"%s",tempbuffer+ipos);
-          switch(readbuffer[0])
-            {
-            case 's'://two select ,,,warning 1:seat 2:showdown
-              if(readbuffer[1] == 'e')
-                {
-                  printf("%d seat\n",llll);
-                  play.setSeat(readbuffer);
-                  break;
-                }
-               else
-                {
-                  play.showdown(readbuffer);
-                  break;
-                }
+	address.sin_family = AF_INET;
+	address.sin_addr.s_addr = inet_addr(argv[1]);
+	address.sin_port = htons((int)(atoi(argv[2])));
+
+	int len = sizeof(address);
+	if(!sockConnect(sockfd, &address, len)) return -1;
+
+	printf("success connect IP:%s\n", argv[3]);
+	char tempbuffer[MAXREAD];
+	//  char regbuffer[MAXREAD];
+	//char readbuffer[MAXREAD];
+	memset(tempbuffer,'\0', MAXREAD);
+	//  memset(regbuffer,'\0',MAXREAD);
+	//memset(readbuffer,'\0',MAXREAD);
+
+	strcpy(tempbuffer,"reg: ");
+	strcat(tempbuffer,argv[5]);
+	strcat(tempbuffer," ");
+	strcat(tempbuffer,argv[5]);
+	strcat(tempbuffer," need_notify ");
+
+	while(-1 == write(sockfd , tempbuffer , strlen(tempbuffer)+1)) sleep(1);
 
 
-            case 'b':
-              printf("%d blind\n",llll);
-              play.blind(readbuffer);
-              break;
-            case 'h':
-              printf("%d hold\n",llll);
-              play.addCard(readbuffer);
 
-              break;
-            case 'f':
-              printf("%d flop\n",llll);
-              play.addCard(readbuffer);
+	Player play(argv[5]);
 
-              break;
-            case 't':
-              printf("%d turn\n",llll);
-              play.addCard(readbuffer);
+	pthread_t a_thread;
+	DataBufferPool<char > databuf1(10,MAXREAD);
+	DataStruct *threadData = new DataStruct;
+	threadData->socknum = sockfd;
+	threadData->pSome = (void*)& databuf1;
+	int res = pthread_create(&a_thread, NULL, thread_function, (void *)threadData);
+	if(res != 0)
+	printf("thread create error\n");
+	int llll = 0;
+	while(1)
+	{
+	  bool bOver = false;
+	  bool bBenJuOver = false;
+	  string s ;
+	  play.init();
+	  while(1)
+	    {
+		memset(tempbuffer,'\0', MAXREAD);
+		databuf1.ReadData((void*)tempbuffer,MAXREAD);
+		char *findpos = NULL;
+		if( (findpos = strstr(tempbuffer,"seat/")) != NULL)
+		{
+		      printf("%d seat\n",llll);
+		      play.setSeat(findpos);
+		}
+		if((findpos = strstr(tempbuffer,"blind/")) != NULL)
+		{
+		      printf("%d blind\n",llll);
+		      play.blind(findpos);
+		}
+		if((findpos = strstr(tempbuffer,"hold/")) != NULL)
+		{
+		      printf("%d hold\n",llll);
+		      play.addCard(findpos);
+		}
+		if((findpos = strstr(tempbuffer,"inquire/")) != NULL)
+		{
+		    printf("%d inquire\n",llll);
+			inquireInfo inq;
+			memset(&inq,'\0',sizeof(inq));
+			inq =  play.inquire(findpos);
+			if(!play.getCardStatus())
+			{
+			  s = action(play,inq);
+			}
+			else
+			{
+			  if(play.gHisPlayNum == inq.foldNum+1)
+			    s = " check ";
+			  else
+			    s = " fold ";
+			}
 
-              break;
-            case 'r':
-              printf("%d river\n",llll);
-              play.addCard(readbuffer);
+			if(s.size() == 0)
+			printf("action error in inqire!!\n");
+			else
+			printf("action=%s\n",s.c_str());
 
-              break;
-            case 'i':
-              {
+			send(sockfd , s.c_str() , s.size()+1,0);
 
-                  printf("%d success inquire ! strlen = %d\n",llll,strlen(readbuffer));
-                  fflush(stdout);
-                  inquireInfo inq;
-                  memset(&inq,'\0',sizeof(inq));
-                  inq =  play.inquire(readbuffer);
-                  if(!play.getCardStatus())
-                    {
-                      s = action(play,inq);
-                    }
+		}
+		if((findpos = strstr(tempbuffer,"flop/")) != NULL)
+		{
+		      printf("%d flop\n",llll);
+		      play.addCard(findpos);
+		}
+		if((findpos = strstr(tempbuffer,"turn/")) != NULL)
+		{
+		      printf("%d turn\n",llll);
+		      play.addCard(findpos);
+		}
+		if((findpos = strstr(tempbuffer,"river/")) != NULL)
+		{
+		      printf("%d river\n",llll);
+		      play.addCard(findpos);
+		}
+		if((findpos = strstr(tempbuffer,"showdown/")) != NULL)
+		{
+		      printf("%d showdown\n",llll);
+		}
+		if((findpos = strstr(tempbuffer,"pot-win/")) != NULL)
+		{
+		      printf("%d pot-win\n",llll);
+		      pot_win(play,argv[5]);
+		      bBenJuOver = true;
+		}
+		if((findpos = strstr(tempbuffer,"notify/")) != NULL)
+		{
+		      printf("%d notify\n",llll);
+		}
+		if((findpos = strstr(tempbuffer,"game-over")) != NULL)
+		{
+		      printf("%d game-over\n",llll);
+		      bBenJuOver = true;
+		      bOver = true;
+		}
+		if((findpos = strstr(tempbuffer,"threadexit")) != NULL)
+		{
+		      printf("%d game-over\n",llll);
+		      bBenJuOver = true;
+		      bOver = true;
+		}
 
-                  else
-                    {
-                      if(play.gHisPlayNum == inq.foldNum+1)
-                        s = " check ";
-                      else
-                        s = " fold ";
-                    }
+		if(bBenJuOver) break;
 
-                  if(s.size() == 0)
-                    printf("action error in inqire!!\n");
-                  else
-                    printf("action=%s\n",s.c_str());
+		}
+	  llll++;
+	  if(bOver)
+	  {
+	    printf("game over !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+	    break;
+	  }
+	}
 
-                  write(sockfd , s.c_str() , s.size()+1);
-                  break;
-//                printf("%d inqire\n" ,llll);
-//                s = " fold \n";
-//                write(sockfd , s.c_str() , s.size()+1);
-
-              }
-
-            case 'p':
-             // pot_win(play ,argv[5]);
-              printf("%d potwin\n",llll);
-              bBenJuOver = true;
-              break;
-            case 'g':
-              bOver = true;
-              break;
-             default:
-              printf("Error......................\n");
-              break;
-
-            }
-          if(bBenJuOver) break;
-          if(bOver) break;
-
-
-      }
-      llll++;
-      if(bOver)
-        {
-          printf("game over !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-          break;
-        }
-
-    }
-  delete threadData;
-  close(sockfd);
-  return 0;
+	close(sockfd);
+	return 0;
 }
 
 void *thread_function(void *arg)
@@ -1393,6 +1383,8 @@ void *thread_function(void *arg)
 
     }
   char pexit[] = "thread exit!\n";
+  sprintf(tempbuffer,"%s","threadexit");
+  bufferPool->WriteData((void*)tempbuffer,MAXREAD);
   pthread_exit(pexit);
 
 }
@@ -1433,3 +1425,4 @@ void pot_win(Player &play ,char *argv)
   jishu++;
 
 }
+
