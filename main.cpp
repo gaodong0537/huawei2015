@@ -129,7 +129,7 @@ int lunSum = 0;//use in action ,clear in addCard function
 #define CHECKMAX_INTEL 1
 
 bool bOver = false;
-int gHisPlayNum = 0;
+
 typedef struct _GameHis
 {
   string ID;
@@ -184,7 +184,6 @@ public:
 //  void clearHist(){ gamehist.clear();}//zhi ji lu yi lun history
 
   bool getCardStatus(){int i=getCardNum(); if(i ==2 || i >=5) return false; else return true;}
-  int getJishuError(){ return m_iJiShuError ;}
 
   int addCard(char *info);
   void blind(char *info);
@@ -193,6 +192,7 @@ public:
 public:
   bool m_bChangeFrontHaveBet;
   int strConvertInt(char str);
+  int gHisPlayNum ;
 private:
 //  string m_sCard[7];//0,1 our card , 2 3 4 5 6 public card
   vector<string> m_sCard;
@@ -227,7 +227,6 @@ private:
  // vector<GameHis> gamehist;
 
 
-  int m_iJiShuError ;
 };
 
 Player::Player(string str)
@@ -258,7 +257,6 @@ void Player::init()
   m_iFrontHaveBet = 0;
   m_iSeatPos = 0;
   m_vCardType.clear();
-  m_iJiShuError = 0;
 
 }
 void Player::slipInfo( char *info , vector<string> &vData) //end of " " example "bbbb 1111 2222 \n"
@@ -350,7 +348,6 @@ int Player::addCard(char *info)
 
   if(m_iCardNum > 2) lunSum =0;
 
-  m_iJiShuError++;
   return 0;
 }
 void Player::setCard(string card)
@@ -409,7 +406,7 @@ int Player::setSeat(char *seatInfo)
          ++m_iPlayerNum;
       }
 
-   m_iJiShuError++;
+   gHisPlayNum = m_iPlayerNum;
   return m_iPlayerNum;
 
 
@@ -417,7 +414,6 @@ int Player::setSeat(char *seatInfo)
 void Player::blind(char *info)
 {
   operation(BLIND, info);
-  m_iJiShuError++;
 }
 
 void Player::showdown(char *downmsg)
@@ -681,10 +677,18 @@ string raiseJettonFunc_Crazy(Player &play, inquireInfo &inqInfo,vector<int> &vCa
           else
             {
               if(action_Int.myRemJetton >= inqInfo.noFlodLeastJetton)
-              sprintf(cLeatBet,"%d ",inqInfo.noFlodLeastJetton);
-              strLeatBet = cLeatBet;
-              actionResult = actionResult+action_Int.actionHead[2] + strLeatBet;
-              lunSum++;
+                {
+                  sprintf(cLeatBet,"%d ",inqInfo.noFlodLeastJetton);
+                  strLeatBet = cLeatBet;
+                  actionResult = actionResult+action_Int.actionHead[2] + strLeatBet;
+                  lunSum++;
+                }
+              else
+                {
+                  actionResult = action_Int.actionHead[3];
+                }
+
+
             }
         }
       else
@@ -741,7 +745,7 @@ string raiseJettonFunc_Intelligent(Player play, inquireInfo &inqInfo,vector<int>
 
       if(action_Int.myRemJetton  > action_Int.raiseLeastBet)
         {
-          if(lunSum < RAISEMAX_INTEL && inqInfo.raiseNum < 3)
+          if(lunSum < RAISEMAX_INTEL)
             {
               sprintf(cLeatBet,"%d ",action_Int.raiseLeastBet);
               strLeatBet = cLeatBet;
@@ -760,7 +764,7 @@ string raiseJettonFunc_Intelligent(Player play, inquireInfo &inqInfo,vector<int>
     {
         if(action_Int.myRemJetton > 10* action_Int.leastBet)
           {
-            if(lunSum < RAISEMAX_INTEL && inqInfo.raiseNum < 3)
+            if(lunSum < RAISEMAX_INTEL && inqInfo.raiseNum < action_Int.iPlayNum/2)
               {
                 sprintf(cLeatBet,"%d ",action_Int.leastBet);
                 strLeatBet = cLeatBet;
@@ -768,12 +772,12 @@ string raiseJettonFunc_Intelligent(Player play, inquireInfo &inqInfo,vector<int>
                 lunSum++;
               }
             else
-               actionResult = actionResult +action_Int.actionHead[0];
+               actionResult = actionResult +action_Int.actionHead[1];
 
           }
         else if(action_Int.myRemJetton >  action_Int.leastBet)
           {
-            actionResult = actionResult +action_Int.actionHead[0];
+            actionResult = actionResult +action_Int.actionHead[1];
           }
         else
           {
@@ -798,7 +802,7 @@ string callJettonFunc_Crazy(Player play, inquireInfo &inqInfo,vector<int> &vCard
   if(action_Int.leastBet == 0)
     {
 
-      if(action_Int.myRemJetton  > 15*action_Int.raiseLeastBet && inqInfo.raiseNum == 0 && inqInfo.noFlopNum <3  )
+      if(action_Int.myRemJetton  > 15*action_Int.raiseLeastBet && inqInfo.noFlopNum <3  )
         {
           sprintf(cLeatBet,"%d ",action_Int.raiseLeastBet);
           strLeatBet = cLeatBet;
@@ -1175,7 +1179,7 @@ string action(Player &play ,inquireInfo & inqInfo)
     return " fold ";
 
 }
-#define MAXREAD 256
+#define MAXREAD 512
 void pot_win(Player &play ,char *argv);
 
 int main(int argc, char *argv[])
@@ -1222,7 +1226,8 @@ int main(int argc, char *argv[])
   strcat(tempbuffer,argv[5]);
   strcat(tempbuffer," ");
   strcat(tempbuffer,argv[5]);
-  strcat(tempbuffer," ");
+  strcat(tempbuffer," need_notify ");
+
   while(-1 == write(sockfd , tempbuffer , strlen(tempbuffer)+1)) sleep(1);
 
 
@@ -1246,6 +1251,7 @@ int main(int argc, char *argv[])
         {
           memset(tempbuffer,'\0', MAXREAD);
           memset(readbuffer,'\0',MAXREAD);
+          if(bOver) break;
           databuf1.ReadData((void*)readbuffer,MAXREAD);
 //          int ipos = 0;
 //          while(0 == isalpha(tempbuffer[ipos])) ipos++;
@@ -1256,7 +1262,6 @@ int main(int argc, char *argv[])
               if(readbuffer[1] == 'e')
                 {
                   printf("%d seat\n",llll);
-                  if(play.getJishuError() != 0) break;
                   play.setSeat(readbuffer);
                   break;
                 }
@@ -1268,7 +1273,6 @@ int main(int argc, char *argv[])
 
 
             case 'b':
-              if(play.getJishuError() != 1) break;
               printf("%d blind\n",llll);
               play.blind(readbuffer);
               break;
@@ -1294,20 +1298,25 @@ int main(int argc, char *argv[])
               break;
             case 'i':
               {
+
                   printf("%d success inquire ! strlen = %d\n",llll,strlen(readbuffer));
                   fflush(stdout);
                   inquireInfo inq;
                   memset(&inq,'\0',sizeof(inq));
                   inq =  play.inquire(readbuffer);
-                  if(inq.foldNum)
                   if(!play.getCardStatus())
                     {
-
                       s = action(play,inq);
                     }
 
                   else
-                    s = " fold ";
+                    {
+                      if(play.gHisPlayNum == inq.foldNum+1)
+                        s = " check ";
+                      else
+                        s = " fold ";
+                    }
+
                   if(s.size() == 0)
                     printf("action error in inqire!!\n");
                   else
@@ -1362,17 +1371,25 @@ void *thread_function(void *arg)
   while(1)
     {
       memset(tempbuffer,'\0', MAXREAD);
-      result = read(sockfd, tempbuffer, MAXREAD);
+      result = recv(sockfd, tempbuffer, MAXREAD,0);
       if (result > 0)
         {
           bufferPool->WriteData((void*)tempbuffer,MAXREAD);
+        }
+      else if(result == 0)
+        {
+          printf("sock close success!\n");
+          bOver = true;
         }
       else
         {
           printf("read fail\n");
           bOver = true;
-          break;
         }
+
+
+      if(bOver)
+        break;
 
     }
   char pexit[] = "thread exit!\n";
@@ -1386,7 +1403,7 @@ void pot_win(Player &play ,char *argv)
   FILE *f = NULL;
   static int jishu = 0;
   char path[1024] = {0};
-  sprintf(path,"%s%s.txt","/home/game/huawei/sshcpy/",argv);
+  sprintf(path,"%s%s.txt","/mnt/shared/gamereplay/",argv);
   f = fopen(path ,"a+");
   int iCardNum = play.getCardNum();
   string s="";
