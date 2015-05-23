@@ -15,18 +15,17 @@
 #include <semaphore.h>
 #include <cctype>
 using namespace std;
-int twoCardAction[] = {
-                 /*2A 3A 4A 5A 6A 7A 8A 9A 1A JA QA KA AA 2K 3K 4K 5K 6K 7K 8K 9K 1K JK QK KK 2Q 3Q 4Q 5Q 6Q 7Q 8Q 9Q 1Q JQ QQ 2J 3J 4J 5J 6J 7J 8J 9J 1J JJ 21 31 41 51 61 71 81 91 11 29 39 49 59 69 79 89 99 28 38 48 58 68 78 88 27 37 47 57 67 77 26 36 46 56 66 25 35 45 55 24 34 44 23 33 22 */
-/* 8ren qian   */
-/* 8ren zhongps*/
-/* 8ren hou    */
-/* 4ren qian   */
-/* 4ren zhong  */
-/* 4ren hou    */
-/* 2ren qian  */
-/* 2ren zhong  */
-/* 2ren hou    */
+int twoCardAction[][91] = {
+        /*2A 3A 4A 5A 6A 7A 8A 9A 1A JA QA KA AA 2K 3K 4K 5K 6K 7K 8K 9K 1K JK QK KK 2Q 3Q 4Q 5Q 6Q 7Q 8Q 9Q 1Q JQ QQ 2J 3J 4J 5J 6J 7J 8J 9J 1J JJ 21 31 41 51 61 71 81 91 11 29 39 49 59 69 79 89 99 28 38 48 58 68 78 88 27 37 47 57 67 77 26 36 46 56 66 25 35 45 55 24 34 44 23 33 22 */
+/*8ren */ {1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 4, 5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 4, 5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 4, 1, 1, 1, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 2, 1, 1, 1, 2, 1, 1, 2, 1, 2, 2},
+/*4ren */ {2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 4, 5, 6, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 4, 6, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 2, 1, 1, 1, 2, 1, 1, 2, 1, 2, 2},
+/*2ren */ {3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 5, 6, 7, 1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 5, 7, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4, 6, 1, 1, 1, 1, 1, 1, 1, 1, 3, 5, 1, 1, 1, 1, 1, 1, 1, 1, 4, 1, 1, 1, 1, 1, 1, 1, 4, 1, 1, 1, 1, 1, 1, 4, 1, 1, 1, 1, 1, 4, 1, 1, 1, 1, 3, 1, 1, 1, 3, 1, 1, 3, 1, 3, 3},
+/*8tong*/ {2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 4, 5, 6, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 5, 6, 2, 2, 2, 2, 2, 2, 2, 2, 2, 4, 5, 2, 2, 2, 2, 2, 2, 2, 2, 3, 4, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 2, 1, 1, 1, 2, 1, 1, 2, 1, 2, 2},
+/*4tong*/ {3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 5, 6, 7, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 6, 7, 3, 3, 3, 3, 3, 3, 3, 3, 3, 5, 6, 3, 3, 3, 3, 3, 3, 3, 3, 4, 5, 1, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 2, 1, 1, 1, 2, 1, 1, 2, 1, 2, 2},
+/*2tong*/ {4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 6, 7, 8, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 7, 8, 4, 4, 4, 4, 4, 4, 4, 4, 4, 6, 7, 4, 4, 4, 4, 4, 4, 4, 4, 5, 6, 2, 2, 2, 2, 2, 2, 2, 4, 4, 2, 2, 2, 2, 2, 2, 4, 4, 2, 2, 2, 2, 2, 3, 4, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 3, 2, 2, 2, 3, 2, 2, 3, 2, 3, 3}
+
 };
+
 
 template<class D>
 class DataBufferPool
@@ -138,7 +137,7 @@ int lunSum = 0;//use in action ,clear in addCard function
 #define CALLMAX_CRAZY 2
 #define CALLMAX_INTEL 1
 #define CHECKMAX_INTEL 1
-
+#define MAXJU      500
 bool bOver = false;
 
 typedef struct _GameHis
@@ -186,6 +185,7 @@ public:
   void deleaseMyJetton(int lease){ m_iRemainedJetton = m_iMyJetton - lease;}
   void setMyJetton(int jetton){ m_iMyJetton = jetton;}
 
+  int  getMyMoney(){ return m_iMoney[m_iSeatPos];}
   void setHaveBet(int bet) { m_iHaveBet = bet; m_iRemainedJetton = m_iMyJetton - bet;}
   int getHaveBet(){ return m_iHaveBet;}
   int getLeastBet() {int ifrontBet = m_iFrontHaveBet-m_iHaveBet; return (ifrontBet > 0 ? ifrontBet : 0 );}
@@ -202,6 +202,7 @@ public:
   void showdown(char *downmsg);
 
   int getErrorNum(){ return m_iError;}
+  int getLunJiShu() {return m_iLunJiShu;}
 public:
   bool m_bChangeFrontHaveBet;
   int strConvertInt(char str);
@@ -240,6 +241,9 @@ private:
  // vector<GameHis> gamehist;
 
   int m_iError;//1: card error  2:atoi error
+  //tong ji quan ju xin xi
+  int m_iLunJiShu ;
+  int m_iSumJettonBegin;
 
 };
 
@@ -247,6 +251,8 @@ Player::Player(string str)
 {
   init();
   m_sMyID = str;
+  m_iLunJiShu = 1;
+  m_iSumJettonBegin = 0;
 }
 
 void Player::init()
@@ -362,9 +368,6 @@ int Player::addCard(char *info)
 
     }
 
-
-  if(m_iCardNum > 2) lunSum =0;
-
   return 0;
 }
 void Player::setCard(string card)
@@ -400,6 +403,7 @@ void Player::changeFrontBet(int frontbet)
 int Player::setSeat(char *seatInfo)
 {
     init();
+
     string sHead[3]={"button: ", "small blind: ","big blind: "};
     char *findbegin, *findend, *findtemp;
     findbegin = seatInfo;
@@ -429,6 +433,7 @@ int Player::setSeat(char *seatInfo)
          try
          {
            m_iMoney[m_iPlayerNum] = atoi(vData[1].c_str());
+           if(m_iLunJiShu == 1) m_iSumJettonBegin += m_iMoney[m_iPlayerNum];
            m_iJetton[m_iPlayerNum] = atoi(vData[2].c_str());
            if(vData[0] == m_sMyID)
              {
@@ -445,6 +450,7 @@ int Player::setSeat(char *seatInfo)
       }
 
    gHisPlayNum = m_iPlayerNum;
+   ++m_iLunJiShu;
   return m_iPlayerNum;
 
 
@@ -682,6 +688,7 @@ public:
   int leastBet ;
   int myRemJetton ;
   int raiseLeastBet ;
+  int myMoney ;
   string actionHead[5];
 };
 ActionClass::ActionClass(Player &play)
@@ -690,6 +697,7 @@ ActionClass::ActionClass(Player &play)
   mypos = play.getSeatPos();
   leastBet = play.getLeastBet();
   myRemJetton = play.getMyRemJetton();
+  myMoney = play.getMyMoney();
   raiseLeastBet = play.getRaiseLeast();
   string actionHead11[5]={" check "," call "," raise "," all_in "," fold "};
   for(int i=0 ; i<5 ;i++)
@@ -699,14 +707,31 @@ ActionClass::ActionClass(Player &play)
     }
 }
 
+string commonAction(Player &play,inquireInfo &inqInfo,vector<int> &vCardType, ActionClass &action_Int)
+{
+  if(inqInfo.foldNum == action_Int.iPlayNum -1)
+    return action_Int.actionHead[0];
+   if(inqInfo.raiseNum ==0 && inqInfo.checkNum == 0 && inqInfo.callNum ==0 && inqInfo.foldNum == 0 && inqInfo.blindNum !=0)
+     {
+       if(action_Int.myMoney+action_Int.myRemJetton < action_Int.raiseLeastBet)
+         return action_Int.actionHead[3];
+       if(action_Int.myRemJetton < action_Int.raiseLeastBet)
+         return action_Int.actionHead[3];
+     }
+
+  return "";
+}
 string raiseJettonFunc_Crazy(Player &play, inquireInfo &inqInfo,vector<int> &vCardType)
 {
   string actionResult="";
 
   ActionClass action_Int(play);
 
-  if(inqInfo.foldNum == action_Int.iPlayNum -1)
-    return action_Int.actionHead[0];
+  string strCom = commonAction(play,inqInfo,vCardType,action_Int);
+  if(strCom != "")
+    return strCom;
+
+
   char cLeatBet[10]={0};
 
   memset(cLeatBet,'\0',sizeof(cLeatBet));
@@ -777,15 +802,17 @@ string raiseJettonFunc_Crazy(Player &play, inquireInfo &inqInfo,vector<int> &vCa
   return actionResult;
 }
 
-string raiseJettonFunc_Intelligent(Player play, inquireInfo &inqInfo,vector<int> &vCardType)
+string raiseJettonFunc_Intelligent(Player &play, inquireInfo &inqInfo,vector<int> &vCardType)
 {
   string actionResult="";
 
   ActionClass action_Int(play);
 
+  string strCom = commonAction(play,inqInfo,vCardType,action_Int);
+  if(strCom != "")
+    return strCom;
   char cLeatBet[10]={0};
-  if(inqInfo.foldNum == action_Int.iPlayNum -1)
-    return action_Int.actionHead[0];
+
 
   memset(cLeatBet,'\0',sizeof(cLeatBet));
   string strLeatBet = "";
@@ -837,14 +864,15 @@ string raiseJettonFunc_Intelligent(Player play, inquireInfo &inqInfo,vector<int>
 
   return actionResult;
 }
-string callJettonFunc_Crazy(Player play, inquireInfo &inqInfo,vector<int> &vCardType)
+string callJettonFunc_Crazy(Player &play, inquireInfo &inqInfo,vector<int> &vCardType)
 {
   string actionResult="";
 
   ActionClass action_Int(play);
 
-  if(inqInfo.foldNum == action_Int.iPlayNum -1)
-    return action_Int.actionHead[0];
+  string strCom = commonAction(play,inqInfo,vCardType,action_Int);
+  if(strCom != "")
+    return strCom;
 
   char cLeatBet[10]={0};
   string strLeatBet = "";
@@ -877,17 +905,18 @@ string callJettonFunc_Crazy(Player play, inquireInfo &inqInfo,vector<int> &vCard
 
   return actionResult;
 }
-string callJettonFunc_Intelligent(Player play, inquireInfo &inqInfo,vector<int> &vCardType)
+string callJettonFunc_Intelligent(Player &play, inquireInfo &inqInfo,vector<int> &vCardType)
 {
   string actionResult="";
 
   ActionClass action_Int(play);
 
+  string strCom = commonAction(play,inqInfo,vCardType,action_Int);
+  if(strCom != "")
+    return strCom;
   char cLeatBet[10]={0};
   string strLeatBet ="";
 
-  if(inqInfo.foldNum == action_Int.iPlayNum -1)
-    return action_Int.actionHead[0];
 
   memset(cLeatBet,'\0',sizeof(cLeatBet));
   if(action_Int.leastBet == 0)
@@ -899,7 +928,7 @@ string callJettonFunc_Intelligent(Player play, inquireInfo &inqInfo,vector<int> 
     {
       if(lunSum < CALLMAX_INTEL)
         {
-          if(action_Int.leastBet <= action_Int.myRemJetton/4)
+          if(action_Int.leastBet <= (action_Int.myRemJetton+action_Int.myMoney)/10)
             {
               actionResult = actionResult +action_Int.actionHead[1];
             }
@@ -917,16 +946,17 @@ string callJettonFunc_Intelligent(Player play, inquireInfo &inqInfo,vector<int> 
   return actionResult;
 }
 
-string checkActionFunc_Crazy(Player play, inquireInfo &inqInfo,vector<int> &vCardType)
+string checkActionFunc_Crazy(Player &play, inquireInfo &inqInfo,vector<int> &vCardType)
 {
   string actionResult="";
 
   ActionClass action_Int(play);
 
-  char cLeatBet[10]={0};
+  string strCom = commonAction(play,inqInfo,vCardType,action_Int);
+  if(strCom != "")
+    return strCom;
 
-  if(inqInfo.foldNum == action_Int.iPlayNum -1)
-    return action_Int.actionHead[0];
+  char cLeatBet[10]={0};
 
   memset(cLeatBet,'\0',sizeof(cLeatBet));
   if(action_Int.leastBet == 0)
@@ -938,7 +968,7 @@ string checkActionFunc_Crazy(Player play, inquireInfo &inqInfo,vector<int> &vCar
     {
           if(lunSum < CHECKMAX_INTEL)
             {
-              if(action_Int.leastBet <= action_Int.myRemJetton/10)
+              if(action_Int.leastBet <= (action_Int.myRemJetton+action_Int.myMoney)/10)
                 {
                   actionResult = actionResult +action_Int.actionHead[1];
                 }
@@ -955,16 +985,18 @@ string checkActionFunc_Crazy(Player play, inquireInfo &inqInfo,vector<int> &vCar
   return actionResult;
 }
 
-string checkActionFunc_intelligent(Player play, inquireInfo &inqInfo,vector<int> &vCardType)
+string checkActionFunc_intelligent(Player &play, inquireInfo &inqInfo,vector<int> &vCardType)
 {
   string actionResult="";
 
   ActionClass action_Int(play);
 
+  string strCom = commonAction(play,inqInfo,vCardType,action_Int);
+  if(strCom != "")
+    return strCom;
+
   char cLeatBet[10]={0};
 
-  if(inqInfo.foldNum == action_Int.iPlayNum -1)
-    return action_Int.actionHead[0];
   memset(cLeatBet,'\0',sizeof(cLeatBet));
   if(action_Int.leastBet == 0)
     {
@@ -1000,12 +1032,16 @@ string fastHandle(Player &play)
 
 }
 
+typedef string (*FUNCTION)(Player & , inquireInfo &,vector<int> &) ;
+FUNCTION pFun[] = {checkActionFunc_intelligent,checkActionFunc_Crazy,callJettonFunc_Intelligent,
+                   callJettonFunc_Crazy,raiseJettonFunc_Intelligent,raiseJettonFunc_Crazy
+                    };
 
 string action(Player &play ,inquireInfo & inqInfo)
 {
 
-  if(inqInfo.raiseNum ==0 && inqInfo.checkNum == 0 && inqInfo.callNum ==0 && inqInfo.foldNum == 0 && inqInfo.blindNum !=0)
-    return fastHandle(play);
+//  if(inqInfo.raiseNum ==0 && inqInfo.checkNum == 0 && inqInfo.callNum ==0 && inqInfo.foldNum == 0 && inqInfo.blindNum !=0)
+//    return fastHandle(play);
   ActionClass action_Int(play);
   int iCardNum = play.getCardNum();
   vector<int> vCardType = play.getMaxCardType();
@@ -1013,85 +1049,126 @@ string action(Player &play ,inquireInfo & inqInfo)
 
   if(iCardNum == 2)
     {
-      if(vCardType[0] == 1 )//dui zi
-      {
-          if(vCardType[1] >= 12  )
-            {
-              return raiseJettonFunc_Intelligent(play, inqInfo, vCardType);
-            }
-          else if(vCardType[1] >=8)
-            {
-              if(inqInfo.raiseNum <2 )
-                return raiseJettonFunc_Intelligent(play,inqInfo,vCardType);
-              else
-                return callJettonFunc_Intelligent(play,inqInfo,vCardType);
+//      if(vCardType[0] == 1 )//dui zi
+//      {
+//          if(vCardType[1] >= 12  )
+//            {
+//              return raiseJettonFunc_Intelligent(play, inqInfo, vCardType);
+//            }
+//          else if(vCardType[1] >=8)
+//            {
+//              if(inqInfo.raiseNum <2 )
+//                return raiseJettonFunc_Intelligent(play,inqInfo,vCardType);
+//              else
+//                return callJettonFunc_Intelligent(play,inqInfo,vCardType);
 
+//            }
+//          else
+//            {
+//              if(inqInfo.raiseNum ==0 && inqInfo.noFlopNum < action_Int.iPlayNum/2)
+//                return callJettonFunc_Intelligent(play,inqInfo,vCardType);
+//              else
+//                return checkActionFunc_Crazy(play,inqInfo,vCardType);
+
+//            }
+
+
+//      }
+//      else if(vCardType[0] == 2)//tong hua
+//        {
+//            if(vCardType[2]+vCardType[1] >= 26  || (vCardType[2]+vCardType[1] >= 25 && vCardType[1] == 12)
+//               || (vCardType[2]+vCardType[1] >= 25 && vCardType[1] == 11) )
+//             {
+//                if(inqInfo.raiseNum ==0 )
+//                  return callJettonFunc_Crazy(play,inqInfo,vCardType);
+//                else
+//                return callJettonFunc_Intelligent(play,inqInfo,vCardType);
+
+//             }
+//            else if(vCardType[2]+vCardType[1] >= 24)//A 10 and k J
+//             {
+//                if(inqInfo.raiseNum == 0)
+//                   return  callJettonFunc_Intelligent(play,inqInfo,vCardType);
+//                else
+//                  return checkActionFunc_Crazy(play,inqInfo,vCardType);
+
+//             }
+//            else
+//              {
+
+//                if(action_Int.mypos <= 2 && inqInfo.noFlopNum == 3-action_Int.mypos && vCardType[2] >= 11 && vCardType[1]+vCardType[2]>=22)
+//                  return callJettonFunc_Intelligent(play,inqInfo,vCardType);
+//                if(action_Int.iPlayNum/2 < inqInfo.foldNum || vCardType[2] == 14 )
+//                  return checkActionFunc_Crazy(play,inqInfo,vCardType);
+//                else
+//                  return checkActionFunc_intelligent(play,inqInfo,vCardType);
+//              }
+
+//          }
+//      else
+//        {
+//          if(vCardType[2]+vCardType[1] >= 26  || (vCardType[2]+vCardType[1] >= 25 && vCardType[1] == 12)
+//             || (vCardType[2]+vCardType[1] >= 25 && vCardType[1] == 11) )
+//           {
+//              if(inqInfo.raiseNum ==0 )
+//                return callJettonFunc_Crazy(play,inqInfo,vCardType);
+//              else
+//              return callJettonFunc_Intelligent(play,inqInfo,vCardType);
+
+//           }
+//           else
+//             {
+//                  if(inqInfo.raiseNum == 0 && action_Int.mypos <= 2 && inqInfo.noFlopNum == 3-action_Int.mypos && vCardType[2] >= 13 && vCardType[1]+vCardType[2]>=22)
+//                    return callJettonFunc_Intelligent(play,inqInfo,vCardType);
+//                  if( inqInfo.raiseNum == 0 &&action_Int.iPlayNum/2 < inqInfo.foldNum  && vCardType[2]+vCardType[1] >21 )
+//                    return checkActionFunc_Crazy(play,inqInfo,vCardType);
+//                  else
+//                   return checkActionFunc_intelligent(play,inqInfo,vCardType);
+//            }
+
+//        }
+      int row = 0;
+      for(int i=13; i>vCardType[2]-1;i--)
+        row += i;
+      row += vCardType[1]-2;
+      int iLevel = 0;
+      if(inqInfo.noFlopNum >=6)
+        {
+          if(vCardType[0] == 2)
+            {
+              iLevel = min(twoCardAction[3][row]-1,5);
             }
           else
             {
-              if(inqInfo.raiseNum ==0 && inqInfo.noFlopNum < action_Int.iPlayNum/2)
-                return callJettonFunc_Intelligent(play,inqInfo,vCardType);
-              else
-                return checkActionFunc_Crazy(play,inqInfo,vCardType);
+              iLevel = min(twoCardAction[0][row]-1,5);
 
             }
-
-
-      }
-      else if(vCardType[0] == 2)//tong hua
+        }
+      else if(inqInfo.noFlopNum >=3)
         {
-            if(vCardType[2]+vCardType[1] >= 26  || (vCardType[2]+vCardType[1] >= 25 && vCardType[1] == 12)
-               || (vCardType[2]+vCardType[1] >= 25 && vCardType[1] == 11) )
-             {
-                if(inqInfo.raiseNum ==0 )
-                  return callJettonFunc_Crazy(play,inqInfo,vCardType);
-                else
-                return callJettonFunc_Intelligent(play,inqInfo,vCardType);
-
-             }
-            else if(vCardType[2]+vCardType[1] >= 24)//A 10 and k J
-             {
-                if(inqInfo.raiseNum == 0)
-                   return  callJettonFunc_Intelligent(play,inqInfo,vCardType);
-                else
-                  return checkActionFunc_Crazy(play,inqInfo,vCardType);
-
-             }
-            else
-              {
-
-                if(action_Int.mypos <= 2 && inqInfo.noFlopNum == 3-action_Int.mypos && vCardType[2] >= 11 && vCardType[1]+vCardType[2]>=22)
-                  return callJettonFunc_Intelligent(play,inqInfo,vCardType);
-                if(action_Int.iPlayNum/2 < inqInfo.foldNum || vCardType[2] == 14 )
-                  return checkActionFunc_Crazy(play,inqInfo,vCardType);
-                else
-                  return checkActionFunc_intelligent(play,inqInfo,vCardType);
-              }
-
-          }
+          if(vCardType[0] == 2)
+            {
+              iLevel = min(twoCardAction[4][row]-1,5);
+            }
+          else
+            {
+              iLevel = min(twoCardAction[1][row]-1,5);
+            }
+        }
       else
         {
-          if(vCardType[2]+vCardType[1] >= 26  || (vCardType[2]+vCardType[1] >= 25 && vCardType[1] == 12)
-             || (vCardType[2]+vCardType[1] >= 25 && vCardType[1] == 11) )
-           {
-              if(inqInfo.raiseNum ==0 )
-                return callJettonFunc_Crazy(play,inqInfo,vCardType);
-              else
-              return callJettonFunc_Intelligent(play,inqInfo,vCardType);
-
-           }
-           else
-             {
-                  if(inqInfo.raiseNum == 0 && action_Int.mypos <= 2 && inqInfo.noFlopNum == 3-action_Int.mypos && vCardType[2] >= 13 && vCardType[1]+vCardType[2]>=22)
-                    return callJettonFunc_Intelligent(play,inqInfo,vCardType);
-                  if( inqInfo.raiseNum == 0 &&action_Int.iPlayNum/2 < inqInfo.foldNum  && vCardType[2]+vCardType[1] >21 )
-                    return checkActionFunc_Crazy(play,inqInfo,vCardType);
-                  else
-                   return checkActionFunc_intelligent(play,inqInfo,vCardType);
+          if(vCardType[0] == 2)
+            {
+              iLevel = min(twoCardAction[5][row]-1,5);
+            }
+          else
+            {
+              iLevel = min(twoCardAction[2][row]-1,5);
             }
 
         }
-      }
+       return pFun[iLevel](play,inqInfo,vCardType);
+     }
   if(iCardNum == 5)
     {
       //judge 5 flush
@@ -1180,6 +1257,8 @@ string action(Player &play ,inquireInfo & inqInfo)
         return callJettonFunc_Intelligent(play, inqInfo, vCardType);
       if((firstCheck+secondCheck == 2) && play.firstTwoCardIsPair())
         return checkActionFunc_Crazy(play, inqInfo, vCardType);
+      if(vCardType[iCardNum+0] == 4 || vCardType[iCardNum+1] == 4 ||vCardType[iCardNum+2] == 4 || vCardType[iCardNum+3] == 4)
+        return checkActionFunc_Crazy(play, inqInfo, vCardType);
       else
         return checkActionFunc_intelligent(play, inqInfo, vCardType);
 
@@ -1212,18 +1291,8 @@ string action(Player &play ,inquireInfo & inqInfo)
       if((firstCheck+secondCheck) == 3)
         return callJettonFunc_Crazy(play, inqInfo, vCardType);
       //two pair and first two card is not pair
-      if((firstCheck+secondCheck == 4) && !play.firstTwoCardIsPair())
-        return callJettonFunc_Intelligent(play, inqInfo, vCardType);
-      //two pair and first two card is pair
-      if((firstCheck+secondCheck == 4) && play.firstTwoCardIsPair())
-        return checkActionFunc_Crazy(play, inqInfo, vCardType);
-      //one pair and first two is not pair
-      if((firstCheck+secondCheck == 2) && !play.firstTwoCardIsPair())
-        return checkActionFunc_intelligent(play, inqInfo, vCardType);
-      if((firstCheck+secondCheck == 2) && play.firstTwoCardIsPair())
-        return checkActionFunc_intelligent(play, inqInfo, vCardType);
       else
-        return checkActionFunc_intelligent(play, inqInfo, vCardType);
+        return callJettonFunc_Intelligent(play, inqInfo, vCardType);
     }
   else
     return " fold ";
@@ -1330,7 +1399,7 @@ int main(int argc, char *argv[])
                       else
                         {
                           *findpos = 's';
-                           llll++;
+                          llll = play.getLunJiShu();
                            printf("%d seat\n",llll);
                            pp = strstr(tmp,"/seat");
                            int len = strlen("/seat");
@@ -1368,6 +1437,7 @@ int main(int argc, char *argv[])
 		      *(pp+len) = '\0';
 		       play.addCard(findpos);
 		      *(pp+len) = ct;
+		       lunSum = 0;
 
 		}
 
@@ -1381,6 +1451,7 @@ int main(int argc, char *argv[])
 		      *(pp+len) = '\0';
 		      play.addCard(findpos);
 		      *(pp+len) = ct;
+		      lunSum = 0;
 
 		}
 		if((findpos = strstr(tmp,"turn/")) != NULL)
@@ -1393,6 +1464,7 @@ int main(int argc, char *argv[])
                       *(pp+len) = '\0';
                       play.addCard(findpos);
                       *(pp+len) = ct;
+                      lunSum = 0;
 
 		}
 		if((findpos = strstr(tmp,"river/")) != NULL)
@@ -1405,6 +1477,7 @@ int main(int argc, char *argv[])
                       *(pp+len) = '\0';
                       play.addCard(findpos);
                       *(pp+len) = ct;
+                      lunSum =0;
 
 		}
 		if((findpos = strstr(tmp,"inquire/")) != NULL)
@@ -1474,23 +1547,23 @@ int main(int argc, char *argv[])
                       *(pp+len) = '\0';
                       //do sth
                       *(pp+len) = ct;
-		}
-		if((findpos = strstr(tmp,"game-over")) != NULL)
-		{
-		      printf("%d game-over\n",llll);
-		      bBenJuOver = true;
-		      bOver = true;
-		}
-		if((findpos = strstr(tmp,"threadexit")) != NULL)
-		{
-		      printf("%d game-over\n",llll);
-		      bBenJuOver = true;
-		      bOver = true;
-		}
+                }
+                if((findpos = strstr(tmp,"game-over")) != NULL)
+                {
+                      printf("%d game-over\n",llll);
+                      bBenJuOver = true;
+                      bOver = true;
+                }
+                if((findpos = strstr(tmp,"threadexit")) != NULL)
+                {
+                      printf("%d game-over\n",llll);
+                      bBenJuOver = true;
+                      bOver = true;
+                }
 
-		if(bBenJuOver) break;
+                if(bBenJuOver) break;
 
-	    }
+            }
 
 	  if(bOver)
 	  {
