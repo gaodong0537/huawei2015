@@ -19,6 +19,8 @@
 #include "pocker.h"
 #include "arrays.h"
 using namespace std;
+
+
 template<class D>
 class DataBufferPool
 {
@@ -128,6 +130,7 @@ int lunSum = 0;//use in action ,clear in addCard function
 #define CALLMAX_CRAZY 2
 #define CALLMAX_INTEL 2
 #define CHECKMAX_INTEL 1
+#define TWOCARDMAXRAISENUM 2
 #define MAXJU      600
 bool bOver = false;
 
@@ -255,6 +258,10 @@ public:
 
 	void handAllInPlayer(inquireInfo &inqInfo);
 	int getWinRate() {return m_iWinRate;}
+
+	bool getFirstInqurieStatus(){ return m_bInquireFisrt;}
+	bool setFirstInquireFalse() { m_bInquireFisrt = false;}
+	vector<vector<int> > getCardTypeSum(){ return  m_vCardTypeSum;	}
 public:
 	bool m_bChangeFrontHaveBet;
 	int strConvertInt(char str);
@@ -298,7 +305,7 @@ private:
 	int m_iSumJettonBegin;
 	int m_iChuShiJetton;
 	int m_iTotalBet;
-	bool m_bLastPlayerBeginRaise;//the end player of the front raise player
+	bool m_bLastPlayerBeginRaise;//the end player of the front raise player ,true impress the last player front the raise player
 
 	map<string,int> m_mHis[5];
 
@@ -314,9 +321,12 @@ private:
 
 	inquireInfo m_iInqInfo;
 	int  m_iWinRate;
+	bool m_bInquireFisrt ;//first inquire
+	vector<vector<int> > m_vCardTypeSum;
 private:
 	int calculateRank(vector<string> vcard);
 	int fenSearch(int *A , int low , int high, int target);
+	vector<int> StatisticsCard(vector<string> card);
 };
 
 Player::Player(string str)
@@ -446,8 +456,8 @@ void Player::setLevel()
 
   for(;w != m_mFoldNum.end();w++)
     {
-      if(w->second >= 16) m_mLevel[w->first] = -1;
-      else if(w->second <=10 ) m_mLevel[w->first] = 1;
+      if(w->second >= 40) m_mLevel[w->first] = -1;
+      else if(w->second <=25 ) m_mLevel[w->first] = 1;
       else m_mLevel[w->first] = 0;
       printf("%s:foldNum=%d level=%d\n",(w->first).c_str(),w->second,m_mLevel[w->first]);
     }
@@ -478,7 +488,7 @@ int Player::addCard(char *info)
 	if (*info == 'h')
 	  {
 	    m_iCardNum = 2;
-	    if((m_iLunJiShu-1) %20 == 0)
+	    if((m_iLunJiShu-1) %50 == 0)
 	      {
 		printf("set Level ...............................................\n");
 		m_mLevel.clear();
@@ -505,6 +515,7 @@ int Player::addCard(char *info)
 	if (m_iCardNum == 2 || m_iCardNum >= 5)
 	{
 		initCardType();
+		m_bInquireFisrt = true;
 
 	}
 
@@ -686,352 +697,391 @@ int Player::calculateRank(vector<string> vcard)
 	  }
 	  return mingchi;
 }
+vector<int> Player:: StatisticsCard(vector<string> card)
+{
+
+  vector<int> typeCard[4];//0:SPADES 1:HEARTS 2:CLUBS 3:DIAMONDS
+  vector<int> digital;
+  vector<int> cardtype;
+  int digiNum[13] = { 0 };
+  int shuzi;
+  srand(time(NULL));
+  for (int i = 0; i<m_iCardNum; i++)
+  {
+          shuzi = 0;
+          shuzi = strConvertInt(card[i][1]);
+          digiNum[shuzi - 2]++;
+          switch (card[i][0])
+          {
+          case 'S':
+                  typeCard[0].push_back(shuzi);
+                  break;
+          case 'H':
+                  typeCard[1].push_back(shuzi);
+                  break;
+          case 'C':
+                  typeCard[2].push_back(shuzi);
+                  break;
+          case 'D':
+                  typeCard[3].push_back(shuzi);
+                  break;
+          default:
+                  m_iError = 1;
+          }
+          digital.push_back(shuzi);
+  }
+  for (int i = 0; i<4; i++)
+          sort(typeCard[i].begin(), typeCard[i].end());
+  sort(digital.begin(), digital.end());
+  if (2 == card.size())
+    {
+            cardtype.clear();
+            if (digital[0] == digital[1]) {
+                    cardtype.push_back(1);
+                    cardtype.push_back(digital[0]);
+                    cardtype.push_back(digital[1]);
+            }
+            else if (typeCard[0].size() == 2 || typeCard[1].size() == 2 || typeCard[2].size() == 2 || typeCard[3].size() == 2)
+            {
+                    cardtype.push_back(2);
+                    cardtype.push_back(digital[0]);
+                    cardtype.push_back(digital[1]);
+            }
+            else
+            {
+                    cardtype.push_back(3);
+                    cardtype.push_back(digital[0]);
+                    cardtype.push_back(digital[1]);
+            }
+
+    }
+  else
+    {
+      cardtype.clear();
+      for (int i = 0; i<5; i++)
+      {
+              cardtype.push_back(digital[i]);
+      }
+      for (int i = 0; i<4; i++)
+      {
+              cardtype.push_back(typeCard[i].size());
+      }
+      for (int i = 0; i<13; i++)
+      {
+              cardtype.push_back(digiNum[i]);
+      }
+    }
+  return cardtype;
+}
 void Player::initCardType()
 {
-	vector<int> typeCard[4];//0:SPADES 1:HEARTS 2:CLUBS 3:DIAMONDS
-	vector<int> digital;
-	int digiNum[13] = { 0 };
-	int shuzi;
-	srand(time(NULL));
-	for (int i = 0; i<m_iCardNum; i++)
-	{
-		shuzi = 0;
-		shuzi = strConvertInt(m_sCard[i][1]);
-		digiNum[shuzi - 2]++;
-		switch (m_sCard[i][0])
-		{
-		case 'S':
-			typeCard[0].push_back(shuzi);
-			break;
-		case 'H':
-			typeCard[1].push_back(shuzi);
-			break;
-		case 'C':
-			typeCard[2].push_back(shuzi);
-			break;
-		case 'D':
-			typeCard[3].push_back(shuzi);
-			break;
-		default:
-			m_iError = 1;
-			return;
-		}
-		digital.push_back(shuzi);
-	}
-	for (int i = 0; i<4; i++)
-		sort(typeCard[i].begin(), typeCard[i].end());
-	sort(digital.begin(), digital.end());
 
-	// m_vCardType;//dui zi return 1, tong hua return 2, qi ta return 3
-	if (2 == m_iCardNum)
-	{
-		m_vCardType.clear();
-		if (digital[0] == digital[1]) {
-			m_vCardType.push_back(1);
-			m_vCardType.push_back(digital[0]);
-			m_vCardType.push_back(digital[1]);
-		}
-		else if (typeCard[0].size() == 2 || typeCard[1].size() == 2 || typeCard[2].size() == 2 || typeCard[3].size() == 2)
-		{
-			m_vCardType.push_back(2);
-			m_vCardType.push_back(digital[0]);
-			m_vCardType.push_back(digital[1]);
-		}
-		else
-		{
-			m_vCardType.push_back(3);
-			m_vCardType.push_back(digital[0]);
-			m_vCardType.push_back(digital[1]);
-		}
+        // m_vCardType;//dui zi return 1, tong hua return 2, qi ta return 3
+      if(m_iCardNum == 2)
+        {
+          m_vCardType = StatisticsCard(m_sCard);
+        }
+      else//5 6 7 first push the sort card and push the card's number of eatch of colour
+      {
+         m_vCardTypeSum.clear();
+         vector<string> statisCard;
+          if( 5 == m_iCardNum)
+            {
+                m_vCardTypeSum.push_back(StatisticsCard(m_sCard));
+            }
+          else if(6 == m_iCardNum)
+            {
 
-	}
-	else//5 6 7 first push the sort card and push the card's number of eatch of colour
-	{
-//		m_vCardType.clear();
-//		for (int i = 0; i<m_iCardNum; i++)
-//		{
-//			m_vCardType.push_back(digital[i]);
-//		}
-//		for (int i = 0; i<4; i++)
-//		{
-//			m_vCardType.push_back(typeCard[i].size());
-//		}
-//		for (int i = 0; i<13; i++)
-//		{
-//			m_vCardType.push_back(digiNum[i]);
-//		}
+              for(int i=0 ; i<6 ;i++ )
+                {
+                  statisCard.clear();
+                  for(int j=0 ; i<5;j++)
+                    statisCard.push_back(m_sCard[sixcardsixselect[i][j]] );
+                  m_vCardTypeSum.push_back(StatisticsCard(statisCard));
+                }
+            }
+          else
+            {
+              for(int i=0 ; i<21 ;i++ )
+                {
+                  statisCard.clear();
+                  for(int j=0 ; i<5;j++)
+                    statisCard.push_back(m_sCard[sevencardtwentyoneselect[i][j]] );
+                  m_vCardTypeSum.push_back(StatisticsCard(statisCard));
+                }
+            }
+        }
 
-	    if(5 == m_iCardNum)
-	      {
-		if(m_sCard.size() != 5)
-		  {
-		    m_iWinRate = 0;
-		    m_iError = 2;
-		    printf("M-sCard error...............................................\n");
-		    return ;
-		  }
-		int myranking = calculateRank(m_sCard);
-		vector<int> rankSt;
-		rankSt.clear();
-		rankSt.push_back(myranking);
-		vector<string> flop;
-		set<string> cardsearchtemp;
-		int r1,r2;
-		for(int i=0; i<100;i++)
-		  {
-		    flop.clear();
-		    cardsearchtemp.clear();
-		    r1 = r2 =0;
-		    for(int j=0;j<3;j++)//add three flop card
-		      {
-			flop.push_back(m_sCard[j+2]);
-		      }
-		    for(int j=0;j<5;j++)
-		      cardsearchtemp.insert(m_sCard[j]);
-
-		    for(int j=0;j<2;j++)//add two rand card
-		      {
-			while (true) {
-			    r1 = rand()%4;
-			    r2 = rand()%13;
-			    if(cardsearchtemp.find(cardpool[r1][r2]) == cardsearchtemp.end())
-			       break;
-			  }
-			cardsearchtemp.insert(cardpool[r1][r2]);
-			flop.push_back(cardpool[r1][r2]);
-		      }
-		    rankSt.push_back(calculateRank(flop));
-
-		  }
-		sort(rankSt.begin(),rankSt.end());
-		int winmycardnum = 0;
-		for(;winmycardnum<rankSt.size();winmycardnum++)
-		  {
-		    if(myranking == rankSt[winmycardnum])
-		      break;
-		  }
-		printf("myranking = %d %d will loss my card in 100 hand\n",myranking,100 - winmycardnum);
-		m_iWinRate = 100 - winmycardnum;
-	      }
-	    else if(6 == m_iCardNum)
-	      {
-
-		if(m_sCard.size() != 6)
-		  {
-		    m_iWinRate = 0;
-		    m_iError = 2;
-		    printf("M-sCard error...............................................\n");
-		    return ;
-		  }
-		vector<int> rankSt;
-		rankSt.clear();
-		vector<string> flop;
-		flop.clear();
-		int myranking =0;
-		for(int i=0;i<6;i++)
-		  {
-		    flop.clear();
-		    for(int j=0;j<5;j++)
-		      {
-			flop.push_back(m_sCard[sixcardsixselect[i][j]]);
-		      }
-		    myranking = calculateRank(flop);
-		    rankSt.push_back(myranking);
-		  }
-		sort(rankSt.begin(),rankSt.end());
-		myranking = rankSt[0];
-		rankSt.clear();
-		rankSt.push_back(myranking);
-		set<string> cardsearchtemp;
-		int r1,r2;
-
-		for(int i=0; i<5;i++)
-		  {
-		    flop.clear();
-		    cardsearchtemp.clear();
-		    r1 = r2 =0;
-		    for(int j=0;j<4;j++)//add three flop card
-		      {
-			flop.push_back(m_sCard[j+2]);
-
-		      }
-		    for(int j=0;j<6;j++)
-		      cardsearchtemp.insert(m_sCard[j]);
-
-		    for(int j=0;j<1;j++)//add one rand card
-		      {
-			while (true) {
-			    r1 = rand()%4;
-			    r2 = rand()%13;
-			    if(cardsearchtemp.find(cardpool[r1][r2]) == cardsearchtemp.end())
-			       break;
-			  }
-			cardsearchtemp.insert(cardpool[r1][r2]);
-			flop.push_back(cardpool[r1][r2]);
-		      }
-		    rankSt.push_back(calculateRank(flop));
-
-		  }
-
-		for(int i=0; i<95;i++)
-		  {
-		    flop.clear();
-		    cardsearchtemp.clear();
-		    vector<string> tempCard(m_sCard.begin()+2,m_sCard.end());
-		    r1 = rand()%4;
-		    tempCard.erase(tempCard.begin() + r1);
-		    r1 = r2 =0;
-		    for(int j=0;j<3;j++)//add three card from four Community Cards
-		      {
-			flop.push_back(tempCard[j]);
-		      }
-		    for(int j=0;j<6;j++)
-		      cardsearchtemp.insert(m_sCard[j]);
-
-		    for(int j=0;j<2;j++)//add two rand card
-		      {
-			while (true) {
-			    r1 = rand()%4;
-			    r2 = rand()%13;
-			    if(cardsearchtemp.find(cardpool[r1][r2]) == cardsearchtemp.end())
-			      break;
-			  }
-			cardsearchtemp.insert(cardpool[r1][r2]);
-			flop.push_back(cardpool[r1][r2]);
-		      }
-		    rankSt.push_back(calculateRank(flop));
-
-		  }
-		sort(rankSt.begin(),rankSt.end());
-		int winmycardnum = 0;
-		for(;winmycardnum<rankSt.size();winmycardnum++)
-		  {
-		    if(myranking == rankSt[winmycardnum])
-		      break;
-		  }
-		printf("myranking = %d %d will loss my card in 100 hand\n",myranking,100 - winmycardnum);
-		m_iWinRate = 100 - winmycardnum;
-	      }
-	    else if(m_iCardNum == 7)
-	      {
-		if(m_sCard.size() != 7)
-		  {
-		    m_iWinRate = 0;
-		    m_iError = 2;
-		    printf("M-sCard error...............................................\n");
-		    return ;
-		  }
-		vector<int> rankSt;
-		rankSt.clear();
-		vector<string> flop;
-		flop.clear();
-		int myranking =0;
-		for(int i=0;i<21;i++)
-		  {
-		    flop.clear();
-		    for(int j=0;j<5;j++)
-		      {
-			flop.push_back(m_sCard[sevencardtwentyoneselect[i][j]]);
-		      }
-		    myranking = calculateRank(flop);
-		    rankSt.push_back(myranking);
-		  }
-		sort(rankSt.begin(),rankSt.end());
-		myranking = rankSt[0];
-		rankSt.clear();
-		rankSt.push_back(myranking);
-		set<string> cardsearchtemp;
-		int r1,r2;
-
-		for(int i=0; i<16;i++)
-		  {
-		    flop.clear();
-		    cardsearchtemp.clear();
-		    vector<string> tempCard(m_sCard.begin()+2,m_sCard.end());
-		    r1 = rand()%5;
-		    tempCard.erase(tempCard.begin() + r1);
-		    r1 = r2 =0;
-		    for(int j=0;j<4;j++)//add four card from five Community Cards
-		      {
-			flop.push_back(tempCard[j]);
-		      }
-		    for(int j=0;j<7;j++)
-		      cardsearchtemp.insert(m_sCard[j]);
-
-		    for(int j=0;j<1;j++)//add one rand card
-		      {
-			while (true) {
-			    r1 = rand()%4;
-			    r2 = rand()%13;
-			    if(cardsearchtemp.find(cardpool[r1][r2]) == cardsearchtemp.end())
-			    break;
-			  }
-			cardsearchtemp.insert(cardpool[r1][r2]);
-			flop.push_back(cardpool[r1][r2]);
-		      }
-		    rankSt.push_back(calculateRank(flop));
-
-		  }
-
-		for(int i=0; i<84;i++)
-		  {
-		    flop.clear();
-		    cardsearchtemp.clear();
-		    vector<string> tempCard(m_sCard.begin()+2,m_sCard.end());
-		    r1 = rand()%5;
-		    tempCard.erase(tempCard.begin() + r1);
-		    r1 = rand()%4;
-		    tempCard.erase(tempCard.begin() + r1);
-		    r1 = r2 =0;
-		    for(int j=0;j<3;j++)//add three card from four Community Cards
-		      {
-			flop.push_back(tempCard[j]);
-		      }
-		    for(int j=0;j<7;j++)
-		      cardsearchtemp.insert(m_sCard[j]);
-		    for(int j=0;j<2;j++)//add two rand card
-		      {
-			while (true) {
-			    r1 = rand()%4;
-			    r2 = rand()%13;
-			    if(cardsearchtemp.find(cardpool[r1][r2]) == cardsearchtemp.end())
-			    break;
-			  }
-			cardsearchtemp.insert(cardpool[r1][r2]);
-			flop.push_back(cardpool[r1][r2]);
-		      }
-		    rankSt.push_back(calculateRank(flop));
-
-		  }
-		sort(rankSt.begin(),rankSt.end());
-		int winmycardnum = 0;
-		for(;winmycardnum<rankSt.size();winmycardnum++)
-		  {
-		    if(myranking == rankSt[winmycardnum])
-		      break;
-		  }
-		printf("myranking = %d %d will loss my card in 100 hand\n",myranking,100 - winmycardnum);
-		m_iWinRate = 100 - winmycardnum;
-	      }
-	    else
+	if(5 == m_iCardNum)
+	  {
+	    if(m_sCard.size() != 5)
 	      {
 		m_iWinRate = 0;
 		m_iError = 2;
 		printf("M-sCard error...............................................\n");
+		return ;
 	      }
-	}
+	    int myranking = calculateRank(m_sCard);
+	    vector<int> rankSt;
+	    rankSt.clear();
+	    rankSt.push_back(myranking);
+	    vector<string> flop;
+	    set<string> cardsearchtemp;
+	    int r1,r2;
+	    for(int i=0; i<100;i++)
+	      {
+		flop.clear();
+		cardsearchtemp.clear();
+		r1 = r2 =0;
+		for(int j=0;j<3;j++)//add three flop card
+		  {
+		    flop.push_back(m_sCard[j+2]);
+		  }
+		for(int j=0;j<5;j++)
+		  cardsearchtemp.insert(m_sCard[j]);
+
+		for(int j=0;j<2;j++)//add two rand card
+		  {
+		    while (true) {
+			r1 = rand()%4;
+			r2 = rand()%13;
+			if(cardsearchtemp.find(cardpool[r1][r2]) == cardsearchtemp.end())
+			   break;
+		      }
+		    cardsearchtemp.insert(cardpool[r1][r2]);
+		    flop.push_back(cardpool[r1][r2]);
+		  }
+		rankSt.push_back(calculateRank(flop));
+
+	      }
+	    sort(rankSt.begin(),rankSt.end());
+	    int winmycardnum = 0;
+	    for(;winmycardnum<rankSt.size();winmycardnum++)
+	      {
+		if(myranking == rankSt[winmycardnum])
+		  break;
+	      }
+	    printf("myranking = %d %d will loss my card in 100 hand\n",myranking,100 - winmycardnum);
+	    m_iWinRate = 100 - winmycardnum;
+	  }
+	else if(6 == m_iCardNum)
+	  {
+
+	    if(m_sCard.size() != 6)
+	      {
+		m_iWinRate = 0;
+		m_iError = 2;
+		printf("M-sCard error...............................................\n");
+		return ;
+	      }
+	    vector<int> rankSt;
+	    rankSt.clear();
+	    vector<string> flop;
+	    flop.clear();
+	    int myranking =0;
+	    for(int i=0;i<6;i++)
+	      {
+		flop.clear();
+		for(int j=0;j<5;j++)
+		  {
+		    flop.push_back(m_sCard[sixcardsixselect[i][j]]);
+		  }
+		myranking = calculateRank(flop);
+		rankSt.push_back(myranking);
+	      }
+	    sort(rankSt.begin(),rankSt.end());
+	    myranking = rankSt[0];
+	    rankSt.clear();
+	    rankSt.push_back(myranking);
+	    set<string> cardsearchtemp;
+	    int r1,r2;
+
+	    for(int i=0; i<5;i++)
+	      {
+		flop.clear();
+		cardsearchtemp.clear();
+		r1 = r2 =0;
+		for(int j=0;j<4;j++)//add three flop card
+		  {
+		    flop.push_back(m_sCard[j+2]);
+
+		  }
+		for(int j=0;j<6;j++)
+		  cardsearchtemp.insert(m_sCard[j]);
+
+		for(int j=0;j<1;j++)//add one rand card
+		  {
+		    while (true) {
+			r1 = rand()%4;
+			r2 = rand()%13;
+			if(cardsearchtemp.find(cardpool[r1][r2]) == cardsearchtemp.end())
+			   break;
+		      }
+		    cardsearchtemp.insert(cardpool[r1][r2]);
+		    flop.push_back(cardpool[r1][r2]);
+		  }
+		rankSt.push_back(calculateRank(flop));
+
+	      }
+
+	    for(int i=0; i<95;i++)
+	      {
+		flop.clear();
+		cardsearchtemp.clear();
+		vector<string> tempCard(m_sCard.begin()+2,m_sCard.end());
+		r1 = rand()%4;
+		tempCard.erase(tempCard.begin() + r1);
+		r1 = r2 =0;
+		for(int j=0;j<3;j++)//add three card from four Community Cards
+		  {
+		    flop.push_back(tempCard[j]);
+		  }
+		for(int j=0;j<6;j++)
+		  cardsearchtemp.insert(m_sCard[j]);
+
+		for(int j=0;j<2;j++)//add two rand card
+		  {
+		    while (true) {
+			r1 = rand()%4;
+			r2 = rand()%13;
+			if(cardsearchtemp.find(cardpool[r1][r2]) == cardsearchtemp.end())
+			  break;
+		      }
+		    cardsearchtemp.insert(cardpool[r1][r2]);
+		    flop.push_back(cardpool[r1][r2]);
+		  }
+		rankSt.push_back(calculateRank(flop));
+
+	      }
+	    sort(rankSt.begin(),rankSt.end());
+	    int winmycardnum = 0;
+	    for(;winmycardnum<rankSt.size();winmycardnum++)
+	      {
+		if(myranking == rankSt[winmycardnum])
+		  break;
+	      }
+	    printf("myranking = %d %d will loss my card in 100 hand\n",myranking,100 - winmycardnum);
+	    m_iWinRate = 100 - winmycardnum;
+	  }
+	else if(m_iCardNum == 7)
+	  {
+	    if(m_sCard.size() != 7)
+	      {
+		m_iWinRate = 0;
+		m_iError = 2;
+		printf("M-sCard error...............................................\n");
+		return ;
+	      }
+	    vector<int> rankSt;
+	    rankSt.clear();
+	    vector<string> flop;
+	    flop.clear();
+	    int myranking =0;
+	    for(int i=0;i<21;i++)
+	      {
+		flop.clear();
+		for(int j=0;j<5;j++)
+		  {
+		    flop.push_back(m_sCard[sevencardtwentyoneselect[i][j]]);
+		  }
+		myranking = calculateRank(flop);
+		rankSt.push_back(myranking);
+	      }
+	    sort(rankSt.begin(),rankSt.end());
+	    myranking = rankSt[0];
+	    rankSt.clear();
+	    rankSt.push_back(myranking);
+	    set<string> cardsearchtemp;
+	    int r1,r2;
+
+	    for(int i=0; i<16;i++)
+	      {
+		flop.clear();
+		cardsearchtemp.clear();
+		vector<string> tempCard(m_sCard.begin()+2,m_sCard.end());
+		r1 = rand()%5;
+		tempCard.erase(tempCard.begin() + r1);
+		r1 = r2 =0;
+		for(int j=0;j<4;j++)//add four card from five Community Cards
+		  {
+		    flop.push_back(tempCard[j]);
+		  }
+		for(int j=0;j<7;j++)
+		  cardsearchtemp.insert(m_sCard[j]);
+
+		for(int j=0;j<1;j++)//add one rand card
+		  {
+		    while (true) {
+			r1 = rand()%4;
+			r2 = rand()%13;
+			if(cardsearchtemp.find(cardpool[r1][r2]) == cardsearchtemp.end())
+			break;
+		      }
+		    cardsearchtemp.insert(cardpool[r1][r2]);
+		    flop.push_back(cardpool[r1][r2]);
+		  }
+		rankSt.push_back(calculateRank(flop));
+
+	      }
+
+	    for(int i=0; i<84;i++)
+	      {
+		flop.clear();
+		cardsearchtemp.clear();
+		vector<string> tempCard(m_sCard.begin()+2,m_sCard.end());
+		r1 = rand()%5;
+		tempCard.erase(tempCard.begin() + r1);
+		r1 = rand()%4;
+		tempCard.erase(tempCard.begin() + r1);
+		r1 = r2 =0;
+		for(int j=0;j<3;j++)//add three card from four Community Cards
+		  {
+		    flop.push_back(tempCard[j]);
+		  }
+		for(int j=0;j<7;j++)
+		  cardsearchtemp.insert(m_sCard[j]);
+		for(int j=0;j<2;j++)//add two rand card
+		  {
+		    while (true) {
+			r1 = rand()%4;
+			r2 = rand()%13;
+			if(cardsearchtemp.find(cardpool[r1][r2]) == cardsearchtemp.end())
+			break;
+		      }
+		    cardsearchtemp.insert(cardpool[r1][r2]);
+		    flop.push_back(cardpool[r1][r2]);
+		  }
+		rankSt.push_back(calculateRank(flop));
+
+	      }
+	    sort(rankSt.begin(),rankSt.end());
+	    int winmycardnum = 0;
+	    for(;winmycardnum<rankSt.size();winmycardnum++)
+	      {
+		if(myranking == rankSt[winmycardnum])
+		  break;
+	      }
+	    printf("myranking = %d %d will loss my card in 100 hand\n",myranking,100 - winmycardnum);
+	    m_iWinRate = 100 - winmycardnum;
+	  }
+	else
+	  {
+	    m_iWinRate = 0;
+	    m_iError = 2;
+	    printf("M-sCard error...............................................\n");
+	  }
+
 
 
 	//  for(int i=0; i<m_vCardType.size() ;i++)
 	//    printf("%d ",m_vCardType[i]);
 	//  printf("\n");
 	//  fflush(stdout);
-
-
 }
+
 vector<int> Player::getMaxCardType()
 {
-        return m_vCardType;
+	return m_vCardType;
 }
 
 void Player::handAllInPlayer(inquireInfo &inqInfo)
@@ -1223,11 +1273,13 @@ public:
 	int totalBet;
 	int lunJiShu;
 	int jettonSum;
+	int haveBet;
 	string actionHead[5];
 };
 ActionClass::ActionClass(Player &play)
 {
 	iPlayNum = play.getPlayNum();
+	haveBet = play.getHaveBet();
 	mypos = play.getSeatPos();
 	leastBet = play.getLeastBet();
 	myRemJetton = play.getMyRemJetton();
@@ -1248,22 +1300,19 @@ string commonAction(Player &play, inquireInfo &inqInfo, vector<int> &vCardType, 
 {
 	if (inqInfo.foldNum == action_Int.iPlayNum - 1)
 		return action_Int.actionHead[0];
-//	if((action_Int.myRemJetton-(MAXJU-action_Int.lunJiShu)/action_Int.iPlayNum*action_Int.raiseLeastBet/2*3 )>= action_Int.jettonSum/2)
-//	  return action_Int.actionHead[4];
+//    if((action_Int.myRemJetton-(MAXJU-action_Int.lunJiShu)/action_Int.iPlayNum*action_Int.raiseLeastBet/2*3 )>= action_Int.jettonSum/2)
+//        return action_Int.actionHead[4];
 	return "";
 }
 
-string commonFold(Player &play, inquireInfo &inqInfo, vector<int> &vCardType, ActionClass &action_Int)
+string stealpool(inquireInfo & inqInfo, ActionClass &action_Int)
 {
-  if(play.getLastPlayerBeginRaiseStatus() && action_Int.leastBet < min(play.getChuShiJetton()/10,action_Int.myRemJetton/10))
+  lunSum++;
+  if(lunSum <=CHECKMAX_INTEL && action_Int.leastBet < action_Int.totalBet )
     return action_Int.actionHead[1];
-  else if(action_Int.leastBet < play.getChuShiJetton()/20 && action_Int.totalBet >= action_Int.leastBet * inqInfo.noFlopNum/2)
-     return action_Int.actionHead[1];
   else
     return action_Int.actionHead[4];
 }
-
-
 int pos[][8] =
 {
     /* 0 1 2 3 4 5 6 7 *//* 1 qian 2 zhong 3 hou 4 small blind 5 big blind*/
@@ -1281,16 +1330,6 @@ int twoCardLevel[][91] = {
  /*s*/{ 2, 2, 2, 2, 2, 2, 2, 2, 4, 5, 5, 6, 0, 1, 1, 1, 1, 1, 1, 1, 2, 3, 3, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }
 
 };
-
-string stealpool(inquireInfo & inqInfo, ActionClass &action_Int)
-{
-  lunSum++;
-  if(lunSum <=CHECKMAX_INTEL && action_Int.leastBet < action_Int.totalBet )
-    return action_Int.actionHead[1];
-  else
-    return action_Int.actionHead[4];
-
-}
 
 int playerActionLevel(inquireInfo &inqInfo)
 {
@@ -1333,6 +1372,232 @@ string twocardaction(Player &play,inquireInfo &inqInfo,ActionClass &action_Int,v
 	int iplayLevel = playerActionLevel(inqInfo);
 
 	string returnAction = "";
+	if(play.getFirstInqurieStatus())
+	  {
+	    play.setFirstInquireFalse();
+
+	      switch(icardlevel)
+		{
+		case 6://raise
+		  return CardRaise(action_Int.raiseLeastBet*6,action_Int);//raise
+		  break;
+		case 5:
+		  {
+		    if(iplayLevel >= 4)
+		      {
+		      int needbet = action_Int.raiseLeastBet*(4+inqInfo.callNum);
+		      returnAction = CardRaise(needbet,action_Int);
+		      }
+
+                    else if(iplayLevel == 3)
+                     {
+                      if(imypos == 1)
+                      {
+                          if(action_Int.leastBet >= 2* action_Int.raiseLeastBet)
+                              returnAction = action_Int.actionHead[4];//fold
+                          else
+                              returnAction = action_Int.actionHead[1];//call
+                      }
+
+                      else
+                      {
+                      int needbet = action_Int.leastBet*(3+inqInfo.callNum);
+                      returnAction = CardRaise(needbet,action_Int);//raise
+                      }
+
+                    }
+                    else if(iplayLevel == 2)
+                      returnAction = action_Int.actionHead[1];//call
+                    else
+                       returnAction = action_Int.actionHead[4];
+                     break;
+                  }
+
+                case 4:
+                  {
+                    if(iplayLevel >= 4)
+                  {
+                    if(imypos == 1)
+                      returnAction = action_Int.actionHead[4];//fold
+                    else
+                      returnAction = CardRaise(action_Int.raiseLeastBet,action_Int);//raise
+                  }
+
+                    else if(iplayLevel == 3)
+                    {
+                    if(imypos != 5)
+                      returnAction = action_Int.actionHead[4];//fold
+                    else
+                      returnAction = action_Int.actionHead[1];//call
+                    }
+                    else if(iplayLevel == 2)
+                     {
+                    if(imypos != 5 &&vCardType[0]== 2 && vCardType[1] == 12 )
+                      returnAction = action_Int.actionHead[1];//call
+                    else if(imypos != 5)
+                      returnAction = action_Int.actionHead[4];//fold
+                    else
+                      returnAction = action_Int.actionHead[1];//call
+                     }
+
+                    else
+                     returnAction = action_Int.actionHead[4];
+                     break;
+                  }
+                case 3:
+                  {
+                    if(iplayLevel == 6)
+                   {
+                    if(imypos == 1 || imypos == 2)
+                      returnAction = action_Int.actionHead[4];//fold
+                    else
+                      returnAction = CardRaise(action_Int.raiseLeastBet,action_Int);
+                   }
+                    else if(iplayLevel == 5)
+                    {
+                    if(imypos == 1 || imypos ==2)
+                      returnAction = action_Int.actionHead[4];//fold
+                    else if(imypos == 3 || imypos ==4)
+                      returnAction = action_Int.actionHead[1];//call
+                    else
+                      returnAction = action_Int.actionHead[0];//check
+
+                   }
+                    else if(iplayLevel == 4)
+                     {
+                    if(imypos != 5)
+                      returnAction = action_Int.actionHead[1];//call
+                    else
+                      returnAction = action_Int.actionHead[0];//check
+                      }
+                    else if(iplayLevel == 3)
+                      {
+                    if(imypos == 1 || imypos ==2)
+                      returnAction = action_Int.actionHead[4];//fold
+                    else
+                      returnAction = action_Int.actionHead[1];//call
+                       }
+                    else if(iplayLevel == 2)
+                     {
+                          returnAction = action_Int.actionHead[1];//call
+                     }
+                    else
+                      {
+                         returnAction = action_Int.actionHead[4];//fold
+                      }
+                     break;
+                  }
+
+                case 2:
+                  {
+                    if(iplayLevel == 6)
+                  {
+                        if(imypos == 1 || imypos == 2)
+                          returnAction = action_Int.actionHead[4];
+                        else
+                          returnAction = CardRaise(action_Int.raiseLeastBet,action_Int);
+                  }
+                    else if(iplayLevel == 5)
+                  {
+                        if(imypos <= 3)
+                          returnAction = action_Int.actionHead[4];
+                        else if(imypos == 4)
+                          returnAction = action_Int.actionHead[1];
+                        else
+                          returnAction = action_Int.actionHead[0];
+                  }
+                    else if(iplayLevel == 4)
+                  {
+                        if(imypos <= 2)
+                          returnAction = action_Int.actionHead[4];
+                        else if(imypos <= 4)
+                          returnAction = action_Int.actionHead[1];
+                        else
+                          returnAction = action_Int.actionHead[0];
+                  }
+                    else
+                  {
+                        returnAction = action_Int.actionHead[4];
+                  }
+                     break;
+                  }
+                case 1:
+                  {
+                   if(iplayLevel == 6 && imypos >=4)
+                  returnAction = stealpool(inqInfo,action_Int);
+                    else
+                  returnAction = action_Int.actionHead[4];
+                     break;
+                  }
+                default:
+                  printf("card level error ...........................................\n");
+                  break;
+                }
+          }
+        else
+          {
+
+            switch(icardlevel)
+              {
+              case 6://raise
+                {
+                  if(lunSum < TWOCARDMAXRAISENUM)
+                    return CardRaise(action_Int.totalBet/2,action_Int);//raise
+                  else
+                    {
+                      if(action_Int.myRemJetton >= 4* action_Int.haveBet)
+                        returnAction = action_Int.actionHead[1];
+                      else
+                        returnAction = action_Int.actionHead[3];
+                    }
+
+                  break;
+                }
+              case 5:
+                {
+
+                if(action_Int.myRemJetton < 4 * action_Int.haveBet)
+                  returnAction = action_Int.actionHead[3];
+                else
+                  returnAction = action_Int.actionHead[4];
+                 break;
+                }
+
+              case 4:
+                {
+                if(action_Int.myRemJetton < 2.5 * action_Int.haveBet)
+                  returnAction = action_Int.actionHead[3];
+                else
+                  returnAction = action_Int.actionHead[4];
+                break;
+
+                }
+              case 3:
+                returnAction = action_Int.actionHead[4];
+                 break;
+              case 2:
+                returnAction = action_Int.actionHead[4];
+                 break;
+              case 1:
+                  returnAction = action_Int.actionHead[4];
+                   break;
+              default:
+                printf("card level error ...........................................\n");
+                break;
+              }
+          }
+     return returnAction ;
+
+}
+string fiveCardAction(Player &play,int icardlevel,inquireInfo &inqInfo, ActionClass &action_Int,int winrate)
+{
+  string  returnAction = "" ;
+  int iplayLevel = playerActionLevel(inqInfo);
+  int imypos = pos[action_Int.iPlayNum-2][action_Int.mypos];
+  if(play.getFirstInqurieStatus())
+    {
+      play.setFirstInquireFalse();
+
 	switch(icardlevel)
 	  {
 	  case 6://raise
@@ -1341,288 +1606,226 @@ string twocardaction(Player &play,inquireInfo &inqInfo,ActionClass &action_Int,v
 	  case 5:
 	    {
 	      if(iplayLevel >= 4)
-		returnAction = CardRaise(action_Int.totalBet/2,action_Int);
-	      else if(iplayLevel == 3)
 		{
-		  if(imypos == 1)
-		    returnAction = action_Int.actionHead[4];//fold
-		  else
-		    returnAction = CardRaise(action_Int.raiseLeastBet,action_Int);//raise
-		}
-	      else if(iplayLevel == 2)
-		returnAction = action_Int.actionHead[1];//call
-	      else
-		returnAction = action_Int.actionHead[4];
-	       break;
-	    }
-
-	  case 4:
-	    {
-	      if(iplayLevel >= 4)
-		{
-		  if(imypos == 1)
-		    returnAction = action_Int.actionHead[4];//fold
-		  else
-		    returnAction = CardRaise(action_Int.raiseLeastBet,action_Int);//raise
+		int needbet = action_Int.raiseLeastBet*(4+inqInfo.callNum);
+		returnAction = CardRaise(needbet,action_Int);
 		}
 
-	      else if(iplayLevel == 3)
-		{
-		  if(imypos != 5)
-		    returnAction = action_Int.actionHead[4];//fold
-		  else
-		    returnAction = action_Int.actionHead[1];//call
-		}
-	      else if(iplayLevel == 2)
-		{
-		  if(imypos != 5 &&vCardType[0]== 2 && vCardType[1] == 12 )
-		    returnAction = action_Int.actionHead[1];//call
-		  else if(imypos != 5)
-		    returnAction = action_Int.actionHead[4];//fold
-		  else
-		    returnAction = action_Int.actionHead[1];//call
-		}
+              else if(iplayLevel == 3)
+               {
+                if(imypos == 1)
+                {
+                    if(action_Int.leastBet >= 2* action_Int.raiseLeastBet)
+                        returnAction = action_Int.actionHead[4];//fold
+                    else
+                        returnAction = action_Int.actionHead[1];//call
+                }
 
-	      else
-		returnAction = action_Int.actionHead[4];
-	       break;
-	    }
-	  case 3:
-	    {
-	      if(iplayLevel == 6)
-		{
-		  if(imypos == 1 || imypos == 2)
-		    returnAction = action_Int.actionHead[4];//fold
-		  else
-		    returnAction = CardRaise(action_Int.raiseLeastBet,action_Int);
-		}
-	      else if(iplayLevel == 5)
-		{
-		  if(imypos == 1 || imypos ==2)
-		    returnAction = action_Int.actionHead[4];//fold
-		  else if(imypos == 3 || imypos ==4)
-		    returnAction = action_Int.actionHead[1];//call
-		  else
-		    returnAction = action_Int.actionHead[0];//check
+                else
+                {
+                int needbet = action_Int.leastBet*(3+inqInfo.callNum);
+                returnAction = CardRaise(needbet,action_Int);//raise
+                }
 
-		}
-	      else if(iplayLevel == 4)
-		{
-		  if(imypos != 5)
-		    returnAction = action_Int.actionHead[1];//call
-		  else
-		    returnAction = action_Int.actionHead[0];//check
-		}
-	      else if(iplayLevel == 3)
-		{
-		  if(imypos == 1 || imypos ==2)
-		    returnAction = action_Int.actionHead[4];//fold
-		  else
-		    returnAction = action_Int.actionHead[1];//call
-		}
-	      else if(iplayLevel == 2)
-		{
-		    returnAction = action_Int.actionHead[1];//call
-		}
-	      else
-		{
-		  returnAction = action_Int.actionHead[4];//fold
-		}
-	       break;
-	    }
+              }
+              else if(iplayLevel == 2)
+                returnAction = action_Int.actionHead[1];//call
+              else
+                 returnAction = action_Int.actionHead[4];
+               break;
+            }
 
-	  case 2:
-	    {
-	      if(iplayLevel == 6)
-		{
-		  if(imypos == 1 || imypos == 2)
-		    returnAction = action_Int.actionHead[4];
-		  else
-		    returnAction = CardRaise(action_Int.raiseLeastBet,action_Int);
-		}
-	      else if(iplayLevel == 5)
-		{
-		  if(imypos <= 3)
-		    returnAction = action_Int.actionHead[4];
-		  else if(imypos == 4)
-		    returnAction = action_Int.actionHead[1];
-		  else
-		    returnAction = action_Int.actionHead[0];
-		}
-	      else if(iplayLevel == 4)
-		{
-		  if(imypos <= 2)
-		    returnAction = action_Int.actionHead[4];
-		  else if(imypos <= 4)
-		    returnAction = action_Int.actionHead[1];
-		  else
-		    returnAction = action_Int.actionHead[0];
-		}
-	      else
-		{
-		  returnAction = action_Int.actionHead[4];
-		}
-	       break;
-	    }
-	  case 1:
-	    {
-	      if(iplayLevel >=4)
-		returnAction = stealpool(inqInfo,action_Int);
-	      else
-		 returnAction = action_Int.actionHead[4];
-	       break;
-	    }
-	  default:
-	    printf("card level error ...........................................\n");
-	    break;
-	  }
-     return returnAction ;
+          case 4:
+            {
+              if(iplayLevel >= 4)
+            {
+              if(imypos == 1)
+                returnAction = action_Int.actionHead[4];//fold
+              else
+                returnAction = CardRaise(action_Int.raiseLeastBet,action_Int);//raise
+            }
 
-}
-string fiveCardAction(int icardlevel,inquireInfo &inqInfo, ActionClass &action_Int)
-{
-  string  returnAction = "" ;
-  int iplayLevel = playerActionLevel(inqInfo);
-  int imypos = pos[action_Int.iPlayNum-2][action_Int.mypos];
-  switch(icardlevel)
-    {
-    case 6://raise
-      return CardRaise(action_Int.totalBet/2,action_Int);//raise
-      break;
-    case 5:
-      {
-        if(iplayLevel >= 4)
-          return CardRaise(action_Int.totalBet/2,action_Int);
-        else if(iplayLevel == 3)
-          {
-            if(imypos == 1)
-              returnAction = action_Int.actionHead[4];//fold
-            else
-              return CardRaise(action_Int.leastBet,action_Int);//raise
-          }
-        else if(iplayLevel == 2)
-          returnAction = action_Int.actionHead[1];//call
-        else
-          returnAction = action_Int.actionHead[4];
-         break;
-      }
+              else if(iplayLevel == 3)
+              {
+              if(imypos != 5)
+                returnAction = action_Int.actionHead[4];//fold
+              else
+                returnAction = action_Int.actionHead[1];//call
+              }
+              else if(iplayLevel == 2)
+              {
+              if(imypos != 5)
+                returnAction = action_Int.actionHead[4];//fold
+              else
+                returnAction = action_Int.actionHead[1];//call
+               }
 
-    case 4:
-      {
-        if(iplayLevel >= 4)
-          {
-            if(imypos == 1)
-              returnAction = action_Int.actionHead[4];//fold
-            else
-              return CardRaise(action_Int.raiseLeastBet,action_Int);//raise
-          }
+              else
+               returnAction = action_Int.actionHead[4];
+               break;
+            }
+          case 3:
+            {
+              if(iplayLevel == 6)
+             {
+              if(imypos == 1 || imypos == 2)
+                returnAction = action_Int.actionHead[4];//fold
+              else
+                returnAction = CardRaise(action_Int.raiseLeastBet,action_Int);
+             }
+              else if(iplayLevel == 5)
+              {
+              if(imypos == 1 || imypos ==2)
+                returnAction = action_Int.actionHead[4];//fold
+              else if(imypos == 3 || imypos ==4)
+                returnAction = action_Int.actionHead[1];//call
+              else
+                returnAction = action_Int.actionHead[0];//check
 
-	else if(iplayLevel == 3)
-	  {
-	    if(imypos != 5)
-	      returnAction = action_Int.actionHead[4];//fold
-	    else
-	      returnAction = CardRaise(action_Int.raiseLeastBet,action_Int);//raise
-	  }
-	else if(iplayLevel == 2)
-	  {
-	   if(imypos != 5)
-	      returnAction = action_Int.actionHead[4];//fold
-	    else
-	      returnAction = action_Int.actionHead[1];//call
-	  }
+             }
+              else if(iplayLevel == 4)
+               {
+              if(imypos != 5)
+                returnAction = action_Int.actionHead[1];//call
+              else
+                returnAction = action_Int.actionHead[0];//check
+                }
+              else if(iplayLevel == 3)
+                {
+              if(imypos == 1 || imypos ==2)
+                returnAction = action_Int.actionHead[4];//fold
+              else
+                returnAction = action_Int.actionHead[1];//call
+                 }
+              else if(iplayLevel == 2)
+               {
+                    returnAction = action_Int.actionHead[1];//call
+               }
+              else
+                {
+                   returnAction = action_Int.actionHead[4];//fold
+                }
+               break;
+            }
 
-	else
-	  returnAction = action_Int.actionHead[4];
-	 break;
-      }
-    case 3:
-      {
-        if(iplayLevel == 6)
-          {
-            if(imypos == 1 || imypos == 2)
-              returnAction = action_Int.actionHead[4];//fold
-            else
-              returnAction = CardRaise(action_Int.raiseLeastBet,action_Int);
-          }
-        else if(iplayLevel == 5)
-          {
-            if(imypos == 1 || imypos ==2)
-              returnAction = action_Int.actionHead[4];//fold
-            else if(imypos == 3 || imypos ==4)
-              returnAction = action_Int.actionHead[1];//call
-            else
-              returnAction = action_Int.actionHead[0];//check
-
-	  }
-	else if(iplayLevel == 4)
-	  {
-	    if(imypos != 5)
-	      returnAction = action_Int.actionHead[1];//call
-	    else
-	      returnAction = action_Int.actionHead[0];//check
-	  }
-	else if(iplayLevel == 3)
-	  {
-	    if(imypos == 1 || imypos ==2)
-	      returnAction = action_Int.actionHead[4];//fold
-	    else
-	      returnAction = action_Int.actionHead[1];//call
-	  }
-	else if(iplayLevel == 2)
-	  {
-	      returnAction = action_Int.actionHead[1];//call
-	  }
-	else
-	  {
-	    returnAction = action_Int.actionHead[4];//fold
-	  }
-	 break;
-      }
-
-    case 2:
-      {
-        if(iplayLevel == 6)
-          {
-            if(imypos == 1 || imypos == 2)
-              returnAction = action_Int.actionHead[4];
-            else
-              returnAction = CardRaise(action_Int.raiseLeastBet,action_Int);
-          }
-        else if(iplayLevel == 5)
-          {
-            if(imypos <= 3)
-              returnAction = action_Int.actionHead[4];
-            else if(imypos == 4)
-              returnAction = action_Int.actionHead[1];
-            else
-              returnAction = action_Int.actionHead[0];
-          }
-        else if(iplayLevel == 4)
-          {
-            if(imypos <= 2)
-              returnAction = action_Int.actionHead[4];
-            else if(imypos <= 4)
-              returnAction = action_Int.actionHead[1];
-            else
-              returnAction = action_Int.actionHead[0];
-          }
-        else
-          {
+          case 2:
+            {
+              if(iplayLevel == 6)
+            {
+                  if(imypos == 1 || imypos == 2)
+                    returnAction = action_Int.actionHead[4];
+                  else
+                    returnAction = CardRaise(action_Int.raiseLeastBet,action_Int);
+            }
+              else if(iplayLevel == 5)
+            {
+                  if(imypos <= 3)
+                    returnAction = action_Int.actionHead[4];
+                  else if(imypos == 4)
+                    returnAction = action_Int.actionHead[1];
+                  else
+                    returnAction = action_Int.actionHead[0];
+            }
+              else if(iplayLevel == 4)
+            {
+                  if(imypos <= 2)
+                    returnAction = action_Int.actionHead[4];
+                  else if(imypos <= 4)
+                    returnAction = action_Int.actionHead[1];
+                  else
+                    returnAction = action_Int.actionHead[0];
+            }
+              else
+            {
+                  returnAction = action_Int.actionHead[4];
+            }
+               break;
+            }
+          case 1:
+            {
+             if(iplayLevel == 6 && imypos >=4)
+            returnAction = stealpool(inqInfo,action_Int);
+              else
             returnAction = action_Int.actionHead[4];
+               break;
+            }
+          default:
+            printf("card level error ...........................................\n");
+            break;
           }
-         break;
-      }
-    case 1:
-      {
-        returnAction = action_Int.actionHead[4];
-         break;
-      }
-    default:
-      printf("card level error ...........................................\n");
-      break;
+    }
+  else
+    {
+
+      switch(icardlevel)
+        {
+        case 6://raise
+          {
+            if(lunSum < winrate)
+              return CardRaise(action_Int.totalBet/2,action_Int);//raise
+            else
+              {
+                if(action_Int.myRemJetton >= 4* action_Int.haveBet)
+                  returnAction = action_Int.actionHead[1];
+                else
+                  returnAction = action_Int.actionHead[3];
+              }
+
+            break;
+          }
+        case 5:
+          {
+            if(action_Int.raiseLeastBet <= 1  && action_Int.totalBet >2*action_Int.leastBet)
+                returnAction = action_Int.actionHead[1];
+            else
+              {
+                if(action_Int.myRemJetton < 4 * action_Int.haveBet)
+                    returnAction = action_Int.actionHead[3];
+                 else
+                    returnAction = action_Int.actionHead[4];
+              }
+           break;
+          }
+
+        case 4:
+          {
+            if(action_Int.raiseLeastBet <= 1 && action_Int.leastBet < action_Int.myRemJetton/10 && action_Int.totalBet >2 *action_Int.leastBet)
+                returnAction = action_Int.actionHead[1];
+          else if(action_Int.myRemJetton < 2.5 * action_Int.haveBet)
+            returnAction = action_Int.actionHead[3];
+          else
+            returnAction = action_Int.actionHead[4];
+          break;
+
+          }
+        case 3:
+        case 2:
+        case 1:
+            returnAction = action_Int.actionHead[4];
+             break;
+        default:
+          printf("card level error ...........................................\n");
+          break;
+        }
     }
 return returnAction ;
+
+}
+
+int cardPotential(Player &play,int icardlevel,inquireInfo &inqInfo, ActionClass &action_Int)
+{
+    vector<int> vCardType = play.getMaxCardType();
+    int iCardNum = play.getCardNum();
+    int iPotential = 0;
+    if(iCardNum  == 5)
+      {
+         if(vCardType[iCardNum+0] == 4 || vCardType[iCardNum+1] == 4 ||vCardType[iCardNum+2] == 4 || vCardType[iCardNum+3] == 4)//ting tong hua
+           {
+             if((vCardType[iCardNum-2] - vCardType[0] == 3) || (vCardType[iCardNum-1] - vCardType[1] == 3))//liang duan ting shun zi + tong hua
+               iPotential = 15;
+            if(vCardType)
+           }
+      }
 
 }
 string action(Player &play, inquireInfo & inqInfo)
@@ -1637,20 +1840,23 @@ string action(Player &play, inquireInfo & inqInfo)
 	int iCardNum = play.getCardNum();
 	vector<int> vCardType = play.getMaxCardType();
 
-	string strCom = commonAction(play, inqInfo, vCardType, action_Int);
-	if (strCom != "")
-		return strCom;
-	// have solved all_in player
-	if(iCardNum == 2)
-	  {
-	    return twocardaction(play,inqInfo,action_Int,vCardType);
+    string strCom = commonAction(play, inqInfo, vCardType, action_Int);
+        if (strCom != "")
+                return strCom;
+        // have solved all_in player
+        if(iCardNum == 2)
+          {
+            return twocardaction(play,inqInfo,action_Int,vCardType);
 
 	  }
 	else
 	  {
 	    int winRate = play.getWinRate();
 	    int cardlevel = 0;
-	    int jichu = 80;
+	    int jichu = 90;
+	    int iremindlevel = play.getRemainderLevel();
+	    if(iremindlevel < 0) jichu = 85;
+	    if(iremindlevel > 0) jichu = 95;
 	    if(winRate >= jichu) cardlevel = 6;
 	    else if(winRate >= jichu -10) cardlevel = 5;
 	    else if(winRate >= jichu -20) cardlevel = 4;
@@ -1659,325 +1865,21 @@ string action(Player &play, inquireInfo & inqInfo)
 	    else cardlevel = 1;
 	    if(iCardNum == 5)
 	      {
-		return fiveCardAction(cardlevel,inqInfo,action_Int);
+		return fiveCardAction(play,cardlevel,inqInfo,action_Int,winRate/10-5);
 	      }
 	    else if(iCardNum == 6)
 	      {
-		return fiveCardAction(cardlevel,inqInfo,action_Int);
+		return fiveCardAction(play,cardlevel,inqInfo,action_Int,winRate/10-5);
 	      }
 	    else if(iCardNum == 7)
 	      {
-		return fiveCardAction(cardlevel,inqInfo,action_Int);
+		return fiveCardAction(play,cardlevel,inqInfo,action_Int,winRate/10-5);
 	      }
 	    else
 	      {
 		printf("cardnum error..............................................\n");
 	      }
 	  }
-
-
-
-
-
-
-//	int iLevel = 0;
-//	if (iCardNum == 2)
-//	{
-//			if(vCardType[0] == 1 )//dui zi
-//			    {
-//				if(vCardType[1] >= 12  )
-//				  {
-//				    iLevel = 4;
-//				  }
-//				else if(vCardType[1] >=8)
-//				  {
-//				    if(level(play,inqInfo,action_Int) == 1)
-//				      iLevel = 4;
-//				    else
-//				      iLevel = 3;
-
-//				  }
-//				else
-//				  {
-//				    if(level(play,inqInfo,action_Int) == 1 && inqInfo.noFlopNum < action_Int.iPlayNum/2)
-//				      iLevel = 2;
-//				    else
-//				      iLevel = 1;
-
-//				  }
-
-
-//			    }
-//			    else if(vCardType[0] == 2)//tong hua
-//			      {
-//				  if(vCardType[2]+vCardType[1] >= 26  || (vCardType[2]+vCardType[1] >= 25 && vCardType[1] == 12)
-//				     || (vCardType[2]+vCardType[1] >= 25 && vCardType[1] == 11) )
-//				   {
-//				      if(level(play,inqInfo,action_Int) == 1 )
-//					iLevel = 3;
-//				      else
-//					iLevel = 2;
-
-//				   }
-//				  else if(vCardType[2]+vCardType[1] >= 24)//A 10 and k J
-//				   {
-//				      if(level(play,inqInfo,action_Int) == 1)
-//					 iLevel = 2;
-//				      else
-//					  iLevel =1;
-
-//				   }
-//				  else
-//				    {
-
-//				      if(level(play,inqInfo,action_Int) >= 0 && vCardType[2] >= 13 && vCardType[1]+vCardType[2]>=22 && inqInfo.noFlopNum < action_Int.iPlayNum/2)
-//					iLevel = 2;
-//				      else if(vCardType[1]+1 == vCardType[2] || vCardType[2] == 14)
-//					iLevel = 1;
-//				      else
-//					iLevel = 0;
-//				    }
-
-//				}
-//			    else
-//			      {
-//				if(vCardType[2]+vCardType[1] >= 26  || (vCardType[2]+vCardType[1] >= 25 && vCardType[1] == 12)
-//				   || (vCardType[2]+vCardType[1] >= 25 && vCardType[1] == 11) )
-//				 {
-//				    if(level(play,inqInfo,action_Int) == 1)
-//				      iLevel = 4;
-//				    else
-//				     iLevel = 2;
-
-//				 }
-//				 else
-//				   {
-//					if(level(play,inqInfo,action_Int) == 1 && inqInfo.noFlopNum == 3-action_Int.mypos && vCardType[2] >= 13 && vCardType[1]+vCardType[2]>=22)
-//					  iLevel = 2;
-//					else if( inqInfo.raiseNum == 0 &&action_Int.iPlayNum/2 < inqInfo.foldNum  && vCardType[2]+vCardType[1] >21 )
-//					  iLevel = 1;
-//					else
-//					  iLevel = 0;
-//				  }
-
-//			      }
-//			if( !(vCardType[0]==3 && vCardType[2]<=10))
-//			  {
-//			    if(play.getLastRaiseLevel() != 0)
-//				iLevel = min(max(iLevel+ play.getLastRaiseLevel(),0),5);
-//			     else
-//				iLevel = min(max(iLevel+ (0-play.getRemainderLevel()),0),5);
-
-//			  }
-//			printf("Level:%d Card:%d  %d\n",iLevel,vCardType[1],vCardType[2]);
-//			return pFun[iLevel](play, inqInfo, vCardType);
-////		int row = 0;
-////		for (int i = 13; i>vCardType[2] - 1; i--)
-////			row += i;
-////		row += vCardType[1] - 2;
-////		if (inqInfo.noFlopNum >= 6)
-////		{
-////			if (vCardType[0] == 2)
-////			{
-////				iLevel = min(twoCardAction[3][row] - 1, 5);
-////			}
-////			else
-////			{
-////				iLevel = min(twoCardAction[0][row] - 1, 5);
-
-////			}
-////		}
-////		else if (inqInfo.noFlopNum >= 3)
-////		{
-////			if (vCardType[0] == 2)
-////			{
-////				iLevel = min(twoCardAction[4][row] - 1, 5);
-////			}
-////			else
-////			{
-////				iLevel = min(twoCardAction[1][row] - 1, 5);
-////			}
-////		}
-////		else
-////		{
-////			if (vCardType[0] == 2)
-////			{
-////				iLevel = min(twoCardAction[5][row] - 1, 5);
-////			}
-////			else
-////			{
-////				iLevel = min(twoCardAction[2][row] - 1, 5);
-////			}
-
-////		}
-////		if( !(vCardType[0]==3 && vCardType[2]<=10))
-////		  {
-////		    if(play.getLastRaiseLevel() != 0)
-////			iLevel = min(max(iLevel+ play.getLastRaiseLevel(),0),5);
-////		     else
-////			iLevel = min(max(iLevel+ (0-play.getRemainderLevel()),0),5);
-
-////		  }
-////		printf("Level:%d Card:%d  %d\n",iLevel,vCardType[1],vCardType[2]);
-////		return pFun[iLevel](play, inqInfo, vCardType);
-//	}
-//	if (iCardNum == 5)
-//	{
-//	    int firstCheck, secondCheck;
-//	    firstCheck = secondCheck = 0;
-//	    for (int i = 0; i<13; i++)
-//	    {
-//		    if (vCardType[iCardNum + i + 4] >= 2)
-//		    {
-//			    if (firstCheck == 0) firstCheck = vCardType[iCardNum + i + 4];
-//			    else secondCheck = vCardType[iCardNum + i + 4];
-//		    }
-//	    }
-//		//judge 5 flush
-//		if (vCardType[iCardNum + 0] == 5 || vCardType[iCardNum + 1] == 5 || vCardType[iCardNum + 2] == 5 || vCardType[iCardNum + 3] == 5)
-//			iLevel = 5;
-//		//judge 5 straight
-//		else if (vCardType[iCardNum - 1] - vCardType[0] == 4)
-//			iLevel = 5;
-//		//judge full house or thread-of-a-kind or two pair
-
-//		// FOURE-OF-A-KIND
-//		else if (firstCheck == 4)
-//			iLevel = 5;
-//		//full house
-//		else if ((firstCheck + secondCheck) == 5)
-//			iLevel = 5;
-//		//htread-of-a-kind
-//		else if ((firstCheck + secondCheck) == 3)
-//			iLevel = 4;
-//		//two pair and first two card is not pair
-//		else if ((firstCheck + secondCheck == 4) && !play.firstTwoCardIsPair())
-//			iLevel = 4;
-//		//two pair and first two card is pair
-//		else if ((firstCheck + secondCheck == 4) && play.firstTwoCardIsPair())
-//			iLevel = 3;
-//		//si tong hua
-//		else if (vCardType[iCardNum + 0] == 4 || vCardType[iCardNum + 1] == 4 || vCardType[iCardNum + 2] == 4 || vCardType[iCardNum + 3] == 4)
-//			iLevel = 3;
-//		//one pair and first two is not pair
-//		else if ((firstCheck + secondCheck == 2) && !play.firstTwoCardIsPair())
-//			iLevel = 2;
-//		//si sun zi
-//		else if ((vCardType[iCardNum - 2] - vCardType[0] == 3) || (vCardType[iCardNum - 1] - vCardType[1] == 3))
-//			iLevel = 2;
-//		else if ((firstCheck + secondCheck == 2) && play.firstTwoCardIsPair())
-//			iLevel = 2;
-//		else
-//			iLevel = 0;
-
-
-
-//	}
-//	else if (iCardNum == 6)
-//	{
-
-//		//judge full house or thread-of-a-kind or two pair
-//		int firstCheck, secondCheck;
-//		firstCheck = secondCheck = 0;
-//		for (int i = 0; i<13; i++)
-//		{
-//			if (vCardType[iCardNum + i + 4] >= 2)
-//			{
-//				if (firstCheck == 0) firstCheck = vCardType[iCardNum + i + 4];
-//				else secondCheck = vCardType[iCardNum + i + 4];
-//			}
-//		}
-//		if (firstCheck == 4)
-//			iLevel = 5;
-//		//full house
-//		else if ((firstCheck + secondCheck) == 5)
-//			iLevel = 5;
-//		//judge 5 flush
-//		else if (vCardType[iCardNum + 0] == 5 || vCardType[iCardNum + 1] == 5 || vCardType[iCardNum + 2] == 5 || vCardType[iCardNum + 3] == 5)
-//			iLevel = 4;
-//		//judge 5 straight
-//		else if (vCardType[iCardNum - 1] - vCardType[0] == 4)
-//			iLevel = 4;
-//		//htread-of-a-kind
-//		else if ((firstCheck + secondCheck) == 3)
-//		  {
-//		    if()
-//		  }
-//			iLevel = 3;
-//		//two pair and first two card is not pair
-//		else if ((firstCheck + secondCheck == 4) && !play.firstTwoCardIsPair())
-//			iLevel = 3;
-//		//two pair and first two card is pair
-//		else if ((firstCheck + secondCheck == 4) && play.firstTwoCardIsPair())
-//			iLevel = 2;
-//		//one pair and first two is not pair
-//		else if ((firstCheck + secondCheck == 2) && !play.firstTwoCardIsPair())
-//			iLevel = 1;
-//		else if ((firstCheck + secondCheck == 2) && play.firstTwoCardIsPair())
-//			iLevel = 1;
-//		else if (vCardType[iCardNum + 0] == 4 || vCardType[iCardNum + 1] == 4 || vCardType[iCardNum + 2] == 4 || vCardType[iCardNum + 3] == 4)
-//			iLevel = 1;
-//		else
-//			iLevel = 0;
-
-//	}
-//	else if (iCardNum == 7)
-//	{
-//		//judge full house or thread-of-a-kind or two pair
-//		int firstCheck, secondCheck;
-//		firstCheck = secondCheck = 0;
-//		for (int i = 0; i<13; i++)
-//		{
-//			if (vCardType[iCardNum + i + 4] >= 2)
-//			{
-//				if (firstCheck == 0) firstCheck = vCardType[iCardNum + i + 4];
-//				else secondCheck = vCardType[iCardNum + i + 4];
-//			}
-//		}
-//		if (firstCheck == 4)
-//			iLevel = 5;
-//		//full house
-//		else if ((firstCheck + secondCheck) == 5)
-//			iLevel = 5;
-//		//judge 5 flush
-//		else if (vCardType[iCardNum + 0] == 5 || vCardType[iCardNum + 1] == 5 || vCardType[iCardNum + 2] == 5 || vCardType[iCardNum + 3] == 5)
-//			iLevel = 4;
-//		//judge 5 straight
-//		else if (vCardType[iCardNum - 1] - vCardType[0] == 4)
-//			iLevel = 4;
-//		//htread-of-a-kind
-//		else if ((firstCheck + secondCheck) == 3)
-//			iLevel = 3;
-//		//two pair and first two card is not pair
-//		//two pair and first two card is not pair
-//		else if ((firstCheck + secondCheck == 4) && !play.firstTwoCardIsPair())
-//			iLevel = 2;
-//		//two pair and first two card is pair
-//		else if ((firstCheck + secondCheck == 4) && play.firstTwoCardIsPair())
-//			iLevel = 2;
-//		//one pair and first two is not pair
-//		else if ((firstCheck + secondCheck == 2) && !play.firstTwoCardIsPair())
-//			iLevel = 1;
-//		else if ((firstCheck + secondCheck == 2) && play.firstTwoCardIsPair())
-//			iLevel = 1;
-//		else if (vCardType[iCardNum + 0] == 4 || vCardType[iCardNum + 1] == 4 || vCardType[iCardNum + 2] == 4 || vCardType[iCardNum + 3] == 4)
-//			iLevel = 1;
-//		else
-//			iLevel = 0;
-//	}
-//	else
-//		return " fold ";
-
-////	if(play.getLastRaiseLevel() != 0)
-////	    iLevel = min(max(iLevel+ play.getLastRaiseLevel(),0),5);
-////	 else
-////	    iLevel = min(max(iLevel+ (0-play.getWholeLevel()),0),5);
-
-////	printf("Level:%d \nCard:",iLevel);
-////	for(int i=0 ;i<(4+13+iCardNum);i++)
-////	  printf("%d ",vCardType[i]);
-//	return pFun[iLevel](play, inqInfo, vCardType);
-
 }
 
 #define MAXREAD 2048
@@ -2311,36 +2213,5 @@ void *thread_function(void *arg)
 
 void pot_win(Player &play, char *argv)
 {
-//	FILE *f = NULL;
-//	static int jishu = 0;
-//	char path[1024] = { 0 };
-//	sprintf(path, "%s%s.txt", "/mnt/shared/gamereplay/", argv);
-//	f = fopen(path, "a+");
-//	int iCardNum = play.getCardNum();
-//	string s = "";
-//	char writeIn[32] = { 0 };
-//	for (int i = 0; i<iCardNum; i++)
-//	{
-//		s = play.getCard(i);
-//		sprintf(writeIn, "%s ", s.c_str());
-//		fwrite(writeIn, 1, strlen(writeIn) + 1, f);
-//		fflush(f);
-//	}
-//	sprintf(writeIn, "%s----%d-----%d\n", "----Card", jishu, iCardNum);
-//	fwrite(writeIn, 1, strlen(writeIn), f);
-//	fflush(f);
-//	vector<int> cardtype = play.getMaxCardType();
-//	for (int i = 0; i<cardtype.size(); i++)
-//	{
-//		sprintf(writeIn, "%d  ", cardtype[i]);
-//		fwrite(writeIn, 1, strlen(writeIn) + 1, f);
-//		fflush(f);
-//	}
-
-//	sprintf(writeIn, "%s--%d\n", "-----CardType", jishu);
-//	fwrite(writeIn, 1, strlen(writeIn) + 1, f);
-//	fflush(f);
-//	fclose(f);
-//	jishu++;
 
 }
