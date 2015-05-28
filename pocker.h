@@ -8,6 +8,7 @@
 #define	ONE_PAIR	8
 #define	HIGH_CARD	9
 
+
 #define	RANK(x)		((x >> 8) & 0xF)
 
 static char *value_str[] = {
